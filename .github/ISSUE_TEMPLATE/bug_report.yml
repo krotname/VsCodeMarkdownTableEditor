@@ -1,0 +1,25 @@
+name: Bug report
+description: Report incorrect Markdown table behavior
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: input
+    attributes:
+      label: Minimal input
+      description: Remove private data and include the smallest table that reproduces the issue.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Extension and VS Code versions
+    validations:
+      required: true

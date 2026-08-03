@@ -1,0 +1,633 @@
+{
+  "schemaVersion": 1,
+  "conversion": [
+    {
+      "name": "quoted csv to markdown table",
+      "input": "Name,Note\nAnna,\"A, B\"\nBob,\"said \"\"hi\"\"\"",
+      "lines": [
+        "| Name | Note      |",
+        "| ---- | --------- |",
+        "| Anna | A, B      |",
+        "| Bob  | said \"hi\" |"
+      ]
+    },
+    {
+      "name": "tsv escapes pipes",
+      "input": "Name\tNote\nAnna\tA|B",
+      "lines": [
+        "| Name | Note |",
+        "| ---- | ---- |",
+        "| Anna | A\\|B |"
+      ]
+    },
+    {
+      "name": "csv preserves escaped pipes and fixes even slash parity",
+      "input": "Name,Note\nAnna,a\\|b\nBob,a\\\\|b",
+      "lines": [
+        "| Name | Note   |",
+        "| ---- | ------ |",
+        "| Anna | a\\|b   |",
+        "| Bob  | a\\\\\\|b |"
+      ]
+    },
+    {
+      "name": "tsv delimiter wins when cell commas are more frequent",
+      "input": "Name\tNote\nAnna\tone,two,three,four\nBob\tplain",
+      "lines": [
+        "| Name | Note               |",
+        "| ---- | ------------------ |",
+        "| Anna | one,two,three,four |",
+        "| Bob  | plain              |"
+      ]
+    },
+    {
+      "name": "unterminated quoted csv field is rejected",
+      "input": "Name,Note\nAnna,\"unfinished",
+      "ok": false
+    },
+    {
+      "name": "characters after closing csv quote are rejected",
+      "input": "Name,Note\nAnna,\"quoted\"junk",
+      "ok": false
+    },
+    {
+      "name": "csv preserves an explicitly empty record",
+      "input": "A,B\n,\nC,D",
+      "lines": [
+        "| A   | B   |",
+        "| --- | --- |",
+        "|     |     |",
+        "| C   | D   |"
+      ]
+    },
+    {
+      "name": "csv trims surrounding cell spaces",
+      "input": "Name,Quoted,Unquoted\nAnna,\"  kept  \",  trim  ",
+      "lines": [
+        "| Name | Quoted | Unquoted |",
+        "| ---- | ------ | -------- |",
+        "| Anna | kept   | trim     |"
+      ]
+    },
+    {
+      "name": "csv crlf and multiline quoted cell",
+      "input": "Name,Note\r\nAnna,\"line 1\r\nline 2\"\r\nBob,done\r\n",
+      "lines": [
+        "| Name | Note          |",
+        "| ---- | ------------- |",
+        "| Anna | line 1 line 2 |",
+        "| Bob  | done          |"
+      ]
+    },
+    {
+      "name": "json unicode escapes in csv fixture",
+      "input": "Name,Note\n\u0410\u043d\u044f,\uD83D\uDE00",
+      "lines": [
+        "| Name | Note |",
+        "| ---- | ---- |",
+        "| Аня  | 😀   |"
+      ]
+    },
+    {
+      "name": "multilingual csv unicode width",
+      "input": "Language,Sample,Script\nChinese,汉字,wide\nJapanese,日本語,kana\nKorean,한글,hangul\nArabic,العربية,rtl\nHindi,हिन्दी,devanagari\nThai,ภาษาไทย,thai\nGreek,ελληνικά,greek",
+      "lines": [
+        "| Language | Sample   | Script     |",
+        "| -------- | -------- | ---------- |",
+        "| Chinese  | 汉字     | wide       |",
+        "| Japanese | 日本語   | kana       |",
+        "| Korean   | 한글     | hangul     |",
+        "| Arabic   | العربية  | rtl        |",
+        "| Hindi    | हिन्दी      | devanagari |",
+        "| Thai     | ภาษาไทย  | thai       |",
+        "| Greek    | ελληνικά | greek      |"
+      ]
+    },
+    {
+      "name": "single row csv cjk emoji pipe contract",
+      "input": "Name,Wide,Emoji,Pipe\nАнна,表字,😮‍💨,a|b",
+      "lines": [
+        "| Name | Wide | Emoji | Pipe |",
+        "| ---- | ---- | ----- | ---- |",
+        "| Анна | 表字 | 😮‍💨    | a\\|b |"
+      ]
+    }
+  ],
+  "edits": [
+    {
+      "name": "setext heading is not a markdown table",
+      "action": "ALIGN",
+      "row": 0,
+      "column": 0,
+      "input": [
+        "Title A | Title B",
+        "---"
+      ],
+      "ok": false
+    },
+    {
+      "name": "separator column count must match header",
+      "action": "ALIGN",
+      "row": 0,
+      "column": 0,
+      "input": [
+        "A | B | C",
+        "--- | ---"
+      ],
+      "ok": false
+    },
+    {
+      "name": "unicode width align",
+      "action": "ALIGN",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Word | Value |",
+        "| --- | --- |",
+        "| тест | 1 |",
+        "| 表 | 22 |"
+      ],
+      "lines": [
+        "| Word | Value |",
+        "| ---- | ----- |",
+        "| тест | 1     |",
+        "| 表   | 22    |"
+      ]
+    },
+    {
+      "name": "multilingual unicode width align",
+      "action": "ALIGN",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Language | Sample | Count |",
+        "| --- | --- | ---: |",
+        "| Chinese | 汉字 | 1 |",
+        "| Japanese | 日本語 | 22 |",
+        "| Korean | 한글 | 333 |",
+        "| Arabic | العربية | 4444 |",
+        "| Hindi | हिन्दी | 55555 |",
+        "| Thai | ภาษาไทย | 666666 |",
+        "| Greek | ελληνικά | 7777777 |"
+      ],
+      "lines": [
+        "| Language | Sample   |   Count |",
+        "| -------- | -------- | ------: |",
+        "| Chinese  | 汉字     |       1 |",
+        "| Japanese | 日本語   |      22 |",
+        "| Korean   | 한글     |     333 |",
+        "| Arabic   | العربية  |    4444 |",
+        "| Hindi    | हिन्दी      |   55555 |",
+        "| Thai     | ภาษาไทย  |  666666 |",
+        "| Greek    | ελληνικά | 7777777 |"
+      ]
+    },
+    {
+      "name": "emoji cluster width align",
+      "action": "ALIGN",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Symbol | Note |",
+        "| --- | --- |",
+        "| ©️ | copyright |",
+        "| 1️⃣ | keycap |",
+        "| 🇺🇸 | flag |",
+        "| 👩‍💻 | zwj |",
+        "| á | combining |"
+      ],
+      "lines": [
+        "| Symbol | Note      |",
+        "| ------ | --------- |",
+        "| ©️     | copyright |",
+        "| 1️⃣     | keycap    |",
+        "| 🇺🇸     | flag      |",
+        "| 👩‍💻     | zwj       |",
+        "| á      | combining |"
+      ]
+    },
+    {
+      "name": "smiley emoji width align",
+      "action": "ALIGN",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "| Mood | Face | Note |",
+        "| --- | --- | --- |",
+        "| Happy | 😀 | single |",
+        "| Smile | 😃😄 | pair |",
+        "| Wink | 😉 | text |",
+        "| Laugh | 😂🤣 | double |",
+        "| Mixed | 🙂 ok | suffix |",
+        "| Tone | 🫶🏽 | skin |",
+        "| Exhale | 😮‍💨 | zwj |",
+        "| Dizzy | 😵‍💫 | face zwj |",
+        "| Love | ❤️‍🔥 | heart zwj |",
+        "| Keycap | 1️⃣ | keycap |",
+        "| Flag | 🇯🇵 | flag |"
+      ],
+      "lines": [
+        "| Mood   | Face  | Note      |",
+        "| ------ | ----- | --------- |",
+        "| Happy  | 😀    | single    |",
+        "| Smile  | 😃😄  | pair      |",
+        "| Wink   | 😉    | text      |",
+        "| Laugh  | 😂🤣  | double    |",
+        "| Mixed  | 🙂 ok | suffix    |",
+        "| Tone   | 🫶🏽    | skin      |",
+        "| Exhale | 😮‍💨    | zwj       |",
+        "| Dizzy  | 😵‍💫    | face zwj  |",
+        "| Love   | ❤️‍🔥    | heart zwj |",
+        "| Keycap | 1️⃣    | keycap    |",
+        "| Flag   | 🇯🇵    | flag      |"
+      ]
+    },
+    {
+      "name": "escaped pipe cjk emoji align contract",
+      "action": "ALIGN",
+      "row": 3,
+      "column": 1,
+      "input": [
+        "| Key | Value | Note |",
+        "| --- | :---: | ---: |",
+        "| escaped | a \\| b | 1 |",
+        "| wide | 表字 | 20 |",
+        "| emoji | 😮‍💨 | cluster |"
+      ],
+      "lines": [
+        "| Key     | Value  |    Note |",
+        "| ------- | :----: | ------: |",
+        "| escaped | a \\| b |       1 |",
+        "| wide    |  表字  |      20 |",
+        "| emoji   |   😮‍💨   | cluster |"
+      ],
+      "targetRow": 3,
+      "targetColumn": 1
+    },
+    {
+      "name": "wrap long cells creates continuation rows",
+      "action": "WRAP_LONG_CELLS",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "| Key | Value |",
+        "| --- | --- |",
+        "| row | alpha beta gamma delta epsilon zeta eta theta |"
+      ],
+      "lines": [
+        "| Key | Value                  |",
+        "| --- | ---------------------- |",
+        "| row | alpha beta gamma delta |",
+        "|     | epsilon zeta eta theta |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 1
+    },
+    {
+      "name": "wrap long cells splits overwide markdown links and keeps code spans",
+      "action": "WRAP_LONG_CELLS",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "| Item | Text | Empty |",
+        "| --- | --- | --- |",
+        "| link | [release notes](https://example.com/path_(v1)) alpha beta gamma delta | |",
+        "| code | ``alpha beta`` gamma delta epsilon zeta eta theta | tail |"
+      ],
+      "lines": [
+        "| Item | Text                       | Empty |",
+        "| ---- | -------------------------- | ----- |",
+        "| link | [release notes](https://ex |       |",
+        "|      | ample.com/path_(v1)) alpha |       |",
+        "|      | beta gamma delta           |       |",
+        "| code | ``alpha beta`` gamma delta | tail  |",
+        "|      | epsilon zeta eta theta     |       |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 1
+    },
+    {
+      "name": "wrap long cells keeps header target row",
+      "action": "WRAP_LONG_CELLS",
+      "row": 0,
+      "column": 0,
+      "input": [
+        "| H | V |",
+        "| --- | --- |",
+        "| alpha beta gamma delta epsilon zeta eta theta | tail |"
+      ],
+      "lines": [
+        "| H                      | V    |",
+        "| ---------------------- | ---- |",
+        "| alpha beta gamma delta | tail |",
+        "| epsilon zeta eta theta |      |"
+      ],
+      "targetRow": 0,
+      "targetColumn": 0
+    },
+    {
+      "name": "wrap long cells trims padded rows",
+      "action": "WRAP_LONG_CELLS",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "  | H | V |  ",
+        "  | --- | --- |  ",
+        "  | a  |  b  |  "
+      ],
+      "lines": [
+        "| H   | V   |",
+        "| --- | --- |",
+        "| a   | b   |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    },
+    {
+      "name": "wrap long cells keeps combining marks narrow and cjk wide",
+      "action": "WRAP_LONG_CELLS",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| C | N |",
+        "| --- | --- |",
+        "| e\u0301 | 1 |",
+        "| 表 | 2 |"
+      ],
+      "lines": [
+        "| C   | N   |",
+        "| --- | --- |",
+        "| e\u0301   | 1   |",
+        "| 表  | 2   |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    },
+    {
+      "name": "wrap long cells keeps combining grapheme cluster intact",
+      "action": "WRAP_LONG_CELLS",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| C |",
+        "| --- |",
+        "| 1234567890123456789012345a\u0301z |"
+      ],
+      "lines": [
+        "| C                          |",
+        "| -------------------------- |",
+        "| 1234567890123456789012345a\u0301 |",
+        "| z                          |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    },
+    {
+      "name": "sort rows ascending decimal numbers",
+      "action": "SORT_ASCENDING",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "| Item | Value |",
+        "| --- | ---: |",
+        "| A | -1.5 |",
+        "| B | 10 |",
+        "| C | 2.25 |"
+      ],
+      "lines": [
+        "| Item | Value |",
+        "| ---- | ----: |",
+        "| A    |  -1.5 |",
+        "| C    |  2.25 |",
+        "| B    |    10 |"
+      ]
+    },
+    {
+      "name": "sort rows ascending cyrillic case fold",
+      "action": "SORT_ASCENDING",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Name |",
+        "| --- |",
+        "| Яна |",
+        "| борис |",
+        "| Анна |"
+      ],
+      "lines": [
+        "| Name  |",
+        "| ----- |",
+        "| Анна  |",
+        "| борис |",
+        "| Яна   |"
+      ]
+    },
+    {
+      "name": "sort rows ascending accent fold",
+      "action": "SORT_ASCENDING",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Name |",
+        "| --- |",
+        "| Éclair |",
+        "| apple |",
+        "| Älg |",
+        "| æther |",
+        "| Ángel |",
+        "| ßeta |",
+        "| Þorn |"
+      ],
+      "lines": [
+        "| Name   |",
+        "| ------ |",
+        "| æther  |",
+        "| Älg    |",
+        "| Ángel  |",
+        "| apple  |",
+        "| Éclair |",
+        "| ßeta   |",
+        "| Þorn   |"
+      ]
+    },
+    {
+      "name": "sort groups strict decimal numbers before text",
+      "action": "SORT_ASCENDING",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Value |",
+        "| --- |",
+        "| 10 |",
+        "| 1z |",
+        "| 9 |",
+        "| .5 |",
+        "| 0x10 |",
+        "| inf |",
+        "| 1.5f |",
+        "| 2e3 |",
+        "| 5e-1 |",
+        "| 1e+2 |",
+        "| 7e |",
+        "| 3E2 |",
+        "| - |",
+        "| a­b |",
+        "| 󰀁w |"
+      ],
+      "lines": [
+        "| Value |",
+        "| ----- |",
+        "| .5    |",
+        "| 5e-1  |",
+        "| 9     |",
+        "| 10    |",
+        "| 1e+2  |",
+        "| 3E2   |",
+        "| 2e3   |",
+        "| -     |",
+        "| 0x10  |",
+        "| 1.5f  |",
+        "| 1z    |",
+        "| 7e    |",
+        "| a­b    |",
+        "| inf   |",
+        "| 󰀁w    |"
+      ],
+      "targetRow": 5,
+      "targetColumn": 0
+    },
+    {
+      "name": "sort treats plus and minus zero as equal",
+      "action": "SORT_ASCENDING",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| V |",
+        "| --- |",
+        "| -0 |",
+        "| +0 |"
+      ],
+      "lines": [
+        "| V   |",
+        "| --- |",
+        "| +0  |",
+        "| -0  |"
+      ],
+      "targetRow": 3,
+      "targetColumn": 0
+    },
+    {
+      "name": "next cell appends row",
+      "action": "NEXT_CELL",
+      "row": 3,
+      "column": 1,
+      "input": [
+        "| Name | Age |",
+        "| --- | ---: |",
+        "| Anna | 20 |",
+        "| Alexander | 7 |"
+      ],
+      "lines": [
+        "| Name      | Age |",
+        "| --------- | --: |",
+        "| Anna      |  20 |",
+        "| Alexander |   7 |",
+        "|           |     |"
+      ],
+      "targetRow": 4,
+      "targetColumn": 0
+    },
+    {
+      "name": "previous cell wraps to header",
+      "action": "PREVIOUS_CELL",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| Name | Age |",
+        "| --- | ---: |",
+        "| Anna | 20 |",
+        "| Alexander | 7 |"
+      ],
+      "lines": [
+        "| Name      | Age |",
+        "| --------- | --: |",
+        "| Anna      |  20 |",
+        "| Alexander |   7 |"
+      ],
+      "targetRow": 0,
+      "targetColumn": 1
+    },
+    {
+      "name": "pipeless table gains an outer pipe when a column becomes empty",
+      "action": "INSERT_COLUMN_RIGHT",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "a | b",
+        "--- | ---",
+        "1 | 2"
+      ],
+      "lines": [
+        "a   | b   |     |",
+        "--- | --- | --- |",
+        "1   | 2   |     |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 2
+    },
+    {
+      "name": "pipeless table keeps a pipe after deleting a column",
+      "action": "DELETE_COLUMN",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "a | b",
+        "--- | ---",
+        "1 | 2"
+      ],
+      "lines": [
+        "a   |",
+        "--- |",
+        "1   |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    },
+    {
+      "name": "dashes only header stays a header",
+      "action": "ALIGN",
+      "row": 2,
+      "column": 0,
+      "input": [
+        "| --- | --- |",
+        "| --- | --- |",
+        "| a | b |"
+      ],
+      "lines": [
+        "| --- | --- |",
+        "| --- | --- |",
+        "| a   | b   |"
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    },
+    {
+      "name": "moving an empty column to the front adds the leading pipe",
+      "action": "MOVE_COLUMN_LEFT",
+      "row": 2,
+      "column": 1,
+      "input": [
+        "a | b | c",
+        "--- | --- | ---",
+        "x |  | z"
+      ],
+      "lines": [
+        "| b   | a   | c  ",
+        "| --- | --- | ---",
+        "|     | x   | z  "
+      ],
+      "targetRow": 2,
+      "targetColumn": 0
+    }
+  ]
+}

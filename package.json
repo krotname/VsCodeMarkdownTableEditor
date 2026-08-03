@@ -1,0 +1,110 @@
+{
+  "name": "markdown-table-editor",
+  "displayName": "Markdown Table Editor",
+  "description": "Fast, local Markdown table editing for Visual Studio Code.",
+  "version": "0.1.0",
+  "publisher": "krotname",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krotname/VsCodeMarkdownTableEditor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/krotname/VsCodeMarkdownTableEditor/issues"
+  },
+  "homepage": "https://github.com/krotname/VsCodeMarkdownTableEditor#readme",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": ["Formatters", "Other"],
+  "keywords": ["markdown", "table", "formatter", "csv", "tsv"],
+  "icon": "docs/icon.png",
+  "main": "./dist/extension.js",
+  "files": ["dist/extension.js", "dist/extension.js.map", "docs/icon.png", "LICENSE", "README.md", "README.en.md", "CHANGELOG.md", "PRIVACY.md"],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "tsx --test test/**/*.test.ts",
+    "test:coverage": "c8 --check-coverage --lines 80 --functions 80 --branches 70 --reporter=text --reporter=lcov tsx --test test/**/*.test.ts",
+    "test:e2e": "npm run build && node scripts/run-e2e.mjs",
+    "test:vsix": "node scripts/verify-vsix.mjs",
+    "test": "npm run typecheck && npm run test:unit",
+    "check": "npm run test && npm run build",
+    "package": "npm run check && node scripts/package.mjs",
+    "vscode:prepublish": "npm run build"
+  },
+  "contributes": {
+    "commands": [
+      { "command": "markdownTableEditor.tab", "title": "Tab: Align Markdown Table", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.align", "title": "Align Table", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.fitWidth", "title": "Fit Table Width to Editor", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.nextCell", "title": "Next Cell", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.previousCell", "title": "Previous Cell", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.insertRowBelow", "title": "Insert Row Below", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.deleteRow", "title": "Delete Row", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.insertColumnRight", "title": "Insert Column Right", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.deleteColumn", "title": "Delete Column", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.narrowColumn", "title": "Narrow Column", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.widenColumn", "title": "Widen Column", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.moveRowUp", "title": "Move Row Up", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.moveRowDown", "title": "Move Row Down", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.moveColumnLeft", "title": "Move Column Left", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.moveColumnRight", "title": "Move Column Right", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.sortAscending", "title": "Sort Rows Ascending", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.sortDescending", "title": "Sort Rows Descending", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.convertDelimited", "title": "Convert CSV/TSV to Table", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.insertTable", "title": "Insert Table...", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.toggleLightAutoAlign", "title": "Toggle Light Auto Align After Edit", "category": "Markdown Table Editor" },
+      { "command": "markdownTableEditor.togglePowerAutoFit", "title": "Toggle Power Auto Fit", "category": "Markdown Table Editor" }
+    ],
+    "keybindings": [
+      { "command": "markdownTableEditor.tab", "key": "tab", "when": "editorTextFocus && editorLangId == markdown && !editorReadonly && !inSnippetMode && !suggestWidgetVisible" },
+      { "command": "markdownTableEditor.align", "key": "ctrl+alt+shift+1", "mac": "cmd+alt+shift+1", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.nextCell", "key": "ctrl+alt+shift+2", "mac": "cmd+alt+shift+2", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.previousCell", "key": "ctrl+alt+shift+3", "mac": "cmd+alt+shift+3", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.insertRowBelow", "key": "ctrl+alt+shift+4", "mac": "cmd+alt+shift+4", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.deleteRow", "key": "ctrl+alt+shift+5", "mac": "cmd+alt+shift+5", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.insertColumnRight", "key": "ctrl+alt+shift+6", "mac": "cmd+alt+shift+6", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.deleteColumn", "key": "ctrl+alt+shift+7", "mac": "cmd+alt+shift+7", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.moveRowUp", "key": "ctrl+alt+shift+8", "mac": "cmd+alt+shift+8", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.moveRowDown", "key": "ctrl+alt+shift+9", "mac": "cmd+alt+shift+9", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.convertDelimited", "key": "ctrl+alt+shift+0", "mac": "cmd+alt+shift+0", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.fitWidth", "key": "ctrl+alt+shift+w", "mac": "cmd+alt+shift+w", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.toggleLightAutoAlign", "key": "ctrl+alt+shift+a", "mac": "cmd+alt+shift+a", "when": "editorTextFocus && editorLangId == markdown" },
+      { "command": "markdownTableEditor.togglePowerAutoFit", "key": "ctrl+alt+shift+f", "mac": "cmd+alt+shift+f", "when": "editorTextFocus && editorLangId == markdown" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "markdownTableEditor.align", "when": "editorLangId == markdown", "group": "1_modification@10" },
+        { "command": "markdownTableEditor.fitWidth", "when": "editorLangId == markdown", "group": "1_modification@11" },
+        { "command": "markdownTableEditor.convertDelimited", "when": "editorLangId == markdown", "group": "1_modification@12" }
+      ]
+    },
+    "configuration": {
+      "title": "Markdown Table Editor",
+      "properties": {
+        "markdownTableEditor.lightAutoAlign": { "type": "boolean", "default": true, "description": "Align a table shortly after it is edited." },
+        "markdownTableEditor.powerAutoFit": { "type": "boolean", "default": false, "description": "Fit edited tables to the configured width. Also enables light auto align." },
+        "markdownTableEditor.fitWidth": { "type": "integer", "default": 120, "minimum": 20, "maximum": 1000, "description": "Maximum table display width used by fit commands." }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.0.0",
+    "@types/vscode": "1.96.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.9.2",
+    "c8": "^12.0.0",
+    "esbuild": "^0.28.1",
+    "mocha": "^11.8.0",
+    "tsx": "^4.20.0",
+    "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "diff": "^8.0.3",
+    "serialize-javascript": "^7.0.5"
+  }
+}
