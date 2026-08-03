@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -22,7 +22,7 @@ jobs:
       - run: npm run test:coverage
       - run: npm run package
       - run: sha256sum build/markdown-table-editor.vsix > build/SHA256SUMS.txt
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: build/markdown-table-editor.vsix
       - name: Create GitHub release
