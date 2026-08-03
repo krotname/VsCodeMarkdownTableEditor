@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@v4.37.4
         with:
           languages: javascript-typescript
       - uses: actions/setup-node@v5
@@ -30,7 +30,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@v4.37.4
         with:
           upload: never
           upload-database: false
