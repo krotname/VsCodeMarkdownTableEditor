@@ -5,7 +5,6 @@ import {
   Action,
   apply,
   applyWrappedToWidth,
-  cellCharacterOffset,
   columnFromCursor,
   findTableRange,
   fromDelimited,
@@ -59,10 +58,9 @@ async function replaceTable(
       const applied = await editor.edit((builder) => builder.replace(editRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
       if (!applied) return false;
     }
-    const targetLine = range.firstRow + result.targetRow;
+    const targetLine = Math.min(range.firstRow + result.targetRow, editor.document.lineCount - 1);
     const line = editor.document.lineAt(targetLine).text;
-    const targetCharacter = cellCharacterOffset(line, result.targetColumn, result.targetColumnOffset);
-    const position = new vscode.Position(targetLine, targetCharacter);
+    const position = new vscode.Position(targetLine, Math.min(result.targetColumnOffset, line.length));
     editor.selection = new vscode.Selection(position, position);
     if (reveal) editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     return true;
