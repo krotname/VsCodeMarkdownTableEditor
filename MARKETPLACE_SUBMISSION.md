@@ -1,6 +1,7 @@
 # Visual Studio Marketplace submission
 
-Status: release metadata for version `0.2.2`, the first public Marketplace submission.
+Status: published. Version `0.2.2` was the first public Marketplace listing, uploaded manually on
+2026-08-04 and cleared by the automated review. Version `0.2.3` refreshes the listing text.
 Keep the version here in sync with `package.json`; the publish workflow refuses a mismatch.
 
 The Marketplace requires both the extension `name` and the **display name** to be unique across
@@ -11,19 +12,22 @@ This project therefore publishes as `krotname.markdown-table-editor-plus` with t
 
 ## Artifact
 
-- Version: `0.2.2`
+- Version: `0.2.3`
 - VSIX: `build/markdown-table-editor-plus.vsix`, produced by `npm run package`
 - Checksum: `build/SHA256SUMS.txt`, produced by the release and publish workflows
-- Marketplace item: fill after upload
-- Marketplace verification status: fill after upload
-- GitHub release: fill after tagging `v0.2.2`
+- Marketplace item: <https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus>
+- Marketplace verification status: passed for 0.2.2 — the listing is public, `Install` works, and
+  `code --install-extension krotname.markdown-table-editor-plus` resolves the extension
+- GitHub release: <https://github.com/krotname/VsCodeMarkdownTableEditor/releases/tag/v0.2.2>
 
 ## Extension metadata
 
 - Extension identifier: `krotname.markdown-table-editor-plus`
 - Display name: `Markdown Table Editor Plus`
 - Publisher: `krotname`
-- Categories: `Formatters`, `Other`
+- Categories: `Formatters` and `Other` are declared in the manifest, but the published listing and
+  `vsce show` report only `Formatters`; the Marketplace did not carry `Other` over. Nothing to fix
+  on our side, recorded here so the difference is not mistaken for a packaging error.
 - Keywords: `markdown`, `table`, `formatter`, `csv`, `tsv`
 - VS Code compatibility: `^1.96.0`
 - Extension kind: `ui`, `workspace` (no workspace file system access)
@@ -55,9 +59,10 @@ Edit Markdown pipe tables directly in VS Code: align with `Tab`, fit the table w
 widen columns, sort rows, convert CSV/TSV, insert tables by size, and move rows or columns without
 leaving the editor. Everything runs locally, with no telemetry and no network access.
 
-## Marketplace release notes for 0.2.2
+## Marketplace release notes for 0.2.3
 
 ```markdown
+- Both READMEs now link to this listing and carry Marketplace version, installs, and rating badges.
 - The extension is published as `krotname.markdown-table-editor-plus` with the display name
   `Markdown Table Editor Plus`; both the identifier and the plain display name were already in use.
 - The table engine is a faithful port of the shared JetBrains/Notepad++ core and matches it byte
@@ -72,7 +77,7 @@ leaving the editor. Everything runs locally, with no telemetry and no network ac
 ## Automated submission
 
 Run the **Publish to VS Code Marketplace** workflow from `main`: start with `dry-run`, then use
-`publish` with the confirmation `markdown-table-editor-plus:0.2.2`. The verify job builds the VSIX,
+`publish` with the confirmation `markdown-table-editor-plus:0.2.3`. The verify job builds the VSIX,
 installs it into a throwaway VS Code profile, and records a checksum without ever seeing the
 Marketplace token. The publish job then waits for approval in the `marketplace` GitHub environment,
 which holds the `VSCE_PAT` secret, verifies the checksum of the artifact built by the verify job,

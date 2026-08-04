@@ -4,6 +4,14 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-04
+
+### Changed
+
+- Both READMEs point at the published Marketplace listing: version, installs, and rating badges,
+  an install link in the quick start, and a Marketplace section in the install instructions.
+  The note about a listing being in preparation is gone.
+
 ## [0.2.2] - 2026-08-04
 
 ### Changed
