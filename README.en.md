@@ -26,6 +26,22 @@ The Visual Studio Marketplace listing is in preparation; until then the extensio
 All three editions share the same core behavior and are checked against the same
 `markdown-table-core-golden.json` fixture, so a table looks identical in every editor.
 
+## Demo
+
+![Aligning a Markdown table in VS Code](docs/demo.gif)
+
+The GIF is assembled from real VS Code screenshots on Windows: a clean profile with the VSIX
+installed, a plain `.md` file, alignment with `Tab`, CSV conversion, the Command Palette, row
+sorting, and inserting a new table.
+
+![Markdown Table Editor screenshots in VS Code](docs/marketplace-screenshots/contact-sheet.png)
+
+Individual Marketplace frames: [align with `Tab`](docs/marketplace-screenshots/01-align-table-tab.png),
+[sort rows](docs/marketplace-screenshots/02-sort-rows-by-column.png),
+[convert CSV/TSV](docs/marketplace-screenshots/03-convert-csv-tsv-to-markdown.png),
+[insert a table](docs/marketplace-screenshots/04-insert-edit-markdown-table.png),
+[commands in the Command Palette](docs/marketplace-screenshots/05-complete-workflow-command-palette.png).
+
 ## What it looks like
 
 Before, a hand-written table:
