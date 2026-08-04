@@ -22,6 +22,10 @@ Do not commit generated `dist`, `build`, coverage, downloaded VS Code runtimes, 
 Behavior shared with the other editions belongs in `src/core.ts` and must stay byte-for-byte
 compatible with `test-fixtures/markdown-table-core-golden.json`.
 
+Opening the repository in VS Code and pressing `F5` builds the bundle and launches an Extension
+Development Host with the extension loaded; the second launch configuration runs the E2E suite in
+the same way the `test:e2e` script does.
+
 ## Releasing
 
 1. Update `CHANGELOG.md` and the `version` field in `package.json` in one pull request.
