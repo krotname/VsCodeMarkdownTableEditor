@@ -1124,7 +1124,77 @@ function nonEmptyCellCount(row: Row): number {
   return count;
 }
 
-function isLikelyContinuationRow(row: Row, baseRow: Row, columns: number): boolean {
+/**
+ * The first token of a cell exactly as {@link wrapCellSegments} would split it, so Markdown links
+ * and code spans stay whole.
+ */
+function firstWrapToken(cell: string): string {
+  const value = trim(cell);
+  if (value.length === 0) return '';
+
+  let end = 0;
+  if (value[0] === '`') end = markdownCodeSpanEnd(value, 0);
+  else if (startsMarkdownLinkAt(value, 0)) end = markdownLinkEnd(value, 0);
+  else {
+    while (end < value.length && !isSpace(at(value, end))) end += charCount(codePointAt(value, end));
+  }
+  return value.slice(0, Math.min(end, value.length));
+}
+
+/**
+ * Column widths a wrap would have used, measured only over rows that cannot themselves be
+ * continuations.
+ *
+ * A continuation row must leave at least one column empty, so rows that fill every column carry the
+ * real width. Measuring the continuation candidates too would let a hand-split row widen the very
+ * column it is tested against.
+ */
+function wrappingReferenceWidths(table: Table): number[] {
+  const widths = uniformWidths(table, 1);
+  for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
+    const row = table.rows[rowIndex] as Row;
+    if (!row.separator && rowIndex > table.separatorRow && nonEmptyCellCount(row) !== table.columns) continue;
+    growWidthsToFit(widths, row, table.columns);
+  }
+  return widths;
+}
+
+/**
+ * Whether `row` could have been produced by wrapping the cells of `previousSegment` at `widths`.
+ *
+ * Wrapping leaves a checkable trace. It fills a cell's segments from the top, so a segment never
+ * sits under an empty one, and it is greedy, so it never leaves room for the next token. A row that
+ * breaks either rule is ordinary sparse data that merely looks like wrapping output, and merging it
+ * would destroy a record.
+ */
+function couldFollowWrappedSegment(
+  previousSegment: Row | undefined,
+  row: Row,
+  columns: number,
+  widths: readonly number[],
+): boolean {
+  if (previousSegment === undefined || previousSegment.cells.length < columns) return false;
+
+  for (let column = 0; column < columns; column += 1) {
+    const cell = row.cells[column] as string;
+    if (!cellHasText(cell)) continue;
+
+    const previousCell = previousSegment.cells[column] as string;
+    if (!cellHasText(previousCell)) return false;
+
+    const width = column < widths.length ? (widths[column] as number) : 0;
+    if (displayWidth(previousCell) + 1 + displayWidth(firstWrapToken(cell)) <= width) return false;
+  }
+  return true;
+}
+
+function isLikelyContinuationRow(
+  row: Row,
+  baseRow: Row,
+  previousSegment: Row | undefined,
+  columns: number,
+  widths: readonly number[],
+): boolean {
   if (columns < 2 || row.cells.length < columns || baseRow.cells.length < columns) return false;
 
   const nonEmpty = nonEmptyCellCount(row);
@@ -1138,7 +1208,9 @@ function isLikelyContinuationRow(row: Row, baseRow: Row, columns: number): boole
   }
 
   const requiredAnchors = Math.max(1, Math.floor(columns / 3));
-  return emptyWhereBaseHasText >= requiredAnchors;
+  if (emptyWhereBaseHasText < requiredAnchors) return false;
+
+  return couldFollowWrappedSegment(previousSegment, row, columns, widths);
 }
 
 function copyRow(row: Row): Row {
@@ -1213,15 +1285,18 @@ function continuationRowsToPreserve(table: Table, originalTargetRow: number): bo
   if (table.separatorRow === -1 || originalTargetRow < 0 || originalTargetRow >= table.rows.length) return preserve;
 
   const continuationBaseForRow = Array.from({ length: table.rows.length }, () => -1);
+  const widths = wrappingReferenceWidths(table);
   let baseRowIndex = -1;
   let baseRow: Row | undefined;
+  let previousSegment: Row | undefined;
   for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
     const row = table.rows[rowIndex] as Row;
     if (row.separator || rowIndex <= table.separatorRow || baseRowIndex === -1 || baseRow === undefined
-      || !isLikelyContinuationRow(row, baseRow, table.columns)) {
+      || !isLikelyContinuationRow(row, baseRow, previousSegment, table.columns, widths)) {
       if (!row.separator && rowIndex > table.separatorRow) {
         baseRowIndex = rowIndex;
         baseRow = copyRow(row);
+        previousSegment = copyRow(row);
       }
       continue;
     }
@@ -1230,6 +1305,7 @@ function continuationRowsToPreserve(table: Table, originalTargetRow: number): bo
     for (let column = 0; column < table.columns; column += 1) {
       baseRow.cells[column] = appendContinuationCell(baseRow.cells[column] as string, row.cells[column] as string);
     }
+    previousSegment = copyRow(row);
   }
 
   const targetBaseRow = continuationBaseForRow[originalTargetRow] as number;
@@ -1244,15 +1320,20 @@ function unwrapContinuationRows(table: Table, originalTargetRow: number): number
   if (table.separatorRow === -1) return originalTargetRow;
 
   const preserveContinuationRows = continuationRowsToPreserve(table, originalTargetRow);
+  const widths = wrappingReferenceWidths(table);
   const unwrappedRows: Row[] = [];
   let targetRow = originalTargetRow;
   let baseRowIndex = -1;
+  let previousSegment: Row | undefined;
   for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
     const row = table.rows[rowIndex] as Row;
     if (row.separator || rowIndex <= table.separatorRow || preserveContinuationRows[rowIndex] || baseRowIndex === -1
-      || !isLikelyContinuationRow(row, unwrappedRows[baseRowIndex] as Row, table.columns)) {
+      || !isLikelyContinuationRow(row, unwrappedRows[baseRowIndex] as Row, previousSegment, table.columns, widths)) {
       if (rowIndex === originalTargetRow) targetRow = unwrappedRows.length;
-      if (!row.separator && rowIndex > table.separatorRow) baseRowIndex = unwrappedRows.length;
+      if (!row.separator && rowIndex > table.separatorRow) {
+        baseRowIndex = unwrappedRows.length;
+        previousSegment = copyRow(row);
+      }
       unwrappedRows.push(row);
       continue;
     }
@@ -1263,6 +1344,7 @@ function unwrapContinuationRows(table: Table, originalTargetRow: number): number
     for (let column = 0; column < table.columns; column += 1) {
       baseRow.cells[column] = appendContinuationCell(baseRow.cells[column] as string, row.cells[column] as string);
     }
+    previousSegment = copyRow(row);
   }
 
   table.rows = unwrappedRows;

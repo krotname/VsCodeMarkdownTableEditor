@@ -6,6 +6,12 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Fixed
 
+- Fit Width and the manual narrow/widen actions no longer merge sparse rows that wrapping
+  could not have produced, so distinct records survive power auto fit. Rows that wrapping did
+  produce are still rejoined.
+
+### Fixed
+
 - The table core is now a faithful port of the shared JetBrains/Notepad++ engine and matches it
   byte for byte across the differential corpus. This corrects several behaviours that diverged:
   - Prose that merely contains a pipe is no longer swallowed into the table and rewritten.
