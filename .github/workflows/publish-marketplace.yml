@@ -1,0 +1,142 @@
+name: Publish to VS Code Marketplace
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Extension version without leading v; must match package.json.
+        required: true
+        type: string
+      mode:
+        description: Dry-run builds and verifies the VSIX; publish uploads it to the Marketplace.
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - publish
+      confirmation:
+        description: For publish, type markdown-table-editor:<version>.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markdown-table-editor-marketplace
+  cancel-in-progress: false
+
+jobs:
+  # Runs for both modes and never sees the Marketplace token: workflow_dispatch takes the workflow
+  # file and the build scripts from the dispatched ref, so anything reachable here is untrusted.
+  verify:
+    name: Verify ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_MODE: ${{ inputs.mode }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      RELEASE_REF: ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validate release request
+        run: |
+          set -euo pipefail
+          if ! [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: '$RELEASE_VERSION'." >&2
+            exit 1
+          fi
+          manifest_version="$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_VERSION" != "$manifest_version" ]; then
+            echo "Requested version '$RELEASE_VERSION' does not match package.json '$manifest_version'." >&2
+            exit 1
+          fi
+          if [ "$RELEASE_MODE" = publish ]; then
+            if [ "$RELEASE_REF" != refs/heads/main ]; then
+              echo "Publishing is allowed only from refs/heads/main; got '$RELEASE_REF'." >&2
+              exit 1
+            fi
+            if [ "$RELEASE_CONFIRMATION" != "markdown-table-editor:$RELEASE_VERSION" ]; then
+              echo "Publish confirmation must exactly match 'markdown-table-editor:$RELEASE_VERSION'." >&2
+              exit 1
+            fi
+          fi
+          echo "Validated $RELEASE_MODE request for markdown-table-editor:$RELEASE_VERSION."
+
+      - run: npm ci
+      # npm run package runs typecheck, unit tests, and the bundle build before vsce package.
+      - run: npm run package
+      - run: npm run test:vsix
+
+      - name: Record the artifact checksum
+        run: sha256sum build/markdown-table-editor.vsix > build/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: marketplace-${{ inputs.version }}-${{ inputs.mode }}
+          path: |
+            build/markdown-table-editor.vsix
+            build/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  # The token lives in the "marketplace" environment, which requires reviewer approval and is
+  # limited to protected branches. Dropping the environment from this job would also drop access
+  # to the secret, so the gate cannot be removed by pushing a modified workflow to a side branch.
+  publish:
+    name: Publish ${{ inputs.version }}
+    needs: verify
+    if: ${{ inputs.mode == 'publish' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: marketplace
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_REF: ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: marketplace-${{ inputs.version }}-publish
+          path: build
+
+      - name: Confirm the publish ref, artifact, and secret
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE_REF" != refs/heads/main ]; then
+            echo "Publishing is allowed only from refs/heads/main; got '$RELEASE_REF'." >&2
+            exit 1
+          fi
+          if [ -z "${VSCE_PAT:-}" ]; then
+            echo "Required environment secret 'VSCE_PAT' is missing." >&2
+            exit 1
+          fi
+          sha256sum --check build/SHA256SUMS.txt
+          echo "Publishing markdown-table-editor:$RELEASE_VERSION from main."
+
+      - run: npm ci
+
+      - name: Publish the verified VSIX
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --no-install vsce publish --packagePath build/markdown-table-editor.vsix
