@@ -2,7 +2,7 @@
   "name": "markdown-table-editor-plus",
   "displayName": "Markdown Table Editor Plus",
   "description": "Fast, local Markdown table editing for Visual Studio Code.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "krotname",
   "license": "GPL-3.0-or-later",
   "repository": {

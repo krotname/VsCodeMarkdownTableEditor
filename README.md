@@ -1,5 +1,8 @@
 # Markdown Table Editor Plus для Visual Studio Code
 
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/krotname.markdown-table-editor-plus?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/krotname.markdown-table-editor-plus?label=installs)](https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/krotname.markdown-table-editor-plus?label=rating)](https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus&ssr=false#review-details)
 [![CI](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/codeql.yml?query=branch%3Amain)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/krotname/VsCodeMarkdownTableEditor/badge)](https://securityscorecards.dev/viewer/?uri=github.com/krotname/VsCodeMarkdownTableEditor)
@@ -11,13 +14,13 @@ Markdown Table Editor Plus превращает VS Code в удобный ред
 таблицу или сгенерированную ИИ, жмёте `Tab` — и расширение выравнивает колонки, сохраняя разметку,
 а дальше помогает переставлять строки, колонки и данные, не выходя из редактора.
 
-**Быстрый старт:** [скачать VSIX из последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest) ·
+**Быстрый старт:** [установить из Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus) ·
+[скачать VSIX из последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest) ·
 [открыть сайт проекта](https://markdowntableeditor.ru/) ·
 [English README](README.en.md)
 
-Публикация в Visual Studio Marketplace готовится; до неё расширение ставится из VSIX. В Marketplace
-расширение называется **Markdown Table Editor Plus**: простое `Markdown Table Editor` там уже занято
-посторонним расширением. Это та же линейка, что версии для JetBrains IDEs и Notepad++.
+В Marketplace расширение называется **Markdown Table Editor Plus**: простое `Markdown Table Editor`
+там уже занято посторонним расширением. Это та же линейка, что версии для JetBrains IDEs и Notepad++.
 
 ## Другие версии
 
@@ -114,6 +117,16 @@ GIF собран из реальных скриншотов VS Code под Windo
 - Light Auto Align и Power Auto Fit с переключателями в строке состояния.
 
 ## Установка
+
+Из Marketplace:
+
+- Откройте [страницу расширения](https://marketplace.visualstudio.com/items?itemName=krotname.markdown-table-editor-plus)
+  и нажмите `Install`, либо найдите `Markdown Table Editor Plus` во вкладке Extensions внутри VS Code.
+- Или выполните в терминале:
+
+```
+code --install-extension krotname.markdown-table-editor-plus
+```
 
 Из VSIX:
 
