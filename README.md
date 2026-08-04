@@ -1,4 +1,4 @@
-# Markdown Table Editor для Visual Studio Code
+# Markdown Table Editor Plus для Visual Studio Code
 
 [![CI](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/krotname/VsCodeMarkdownTableEditor/actions/workflows/codeql.yml?query=branch%3Amain)
@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/github/license/krotname/VsCodeMarkdownTableEditor)](LICENSE)
 [![Website](https://img.shields.io/badge/website-markdowntableeditor.ru-0f766e)](https://markdowntableeditor.ru/)
 
-Markdown Table Editor превращает VS Code в удобный редактор Markdown-таблиц. Берёте чужую косую
+Markdown Table Editor Plus превращает VS Code в удобный редактор Markdown-таблиц. Берёте чужую косую
 таблицу или сгенерированную ИИ, жмёте `Tab` — и расширение выравнивает колонки, сохраняя разметку,
 а дальше помогает переставлять строки, колонки и данные, не выходя из редактора.
 
@@ -15,7 +15,9 @@ Markdown Table Editor превращает VS Code в удобный редак�
 [открыть сайт проекта](https://markdowntableeditor.ru/) ·
 [English README](README.en.md)
 
-Публикация в Visual Studio Marketplace готовится; до неё расширение ставится из VSIX.
+Публикация в Visual Studio Marketplace готовится; до неё расширение ставится из VSIX. В Marketplace
+расширение называется **Markdown Table Editor Plus**: простое `Markdown Table Editor` там уже занято
+посторонним расширением. Это та же линейка, что версии для JetBrains IDEs и Notepad++.
 
 ## Другие версии
 
@@ -115,10 +117,10 @@ GIF собран из реальных скриншотов VS Code под Windo
 
 Из VSIX:
 
-1. Скачайте `md-table-editor.vsix` из [последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
+1. Скачайте `markdown-table-editor-plus.vsix` из [последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
    или соберите его локально командой `npm run package`.
 2. В VS Code выполните `Extensions: Install from VSIX...`.
-3. Выберите скачанный или собранный файл `md-table-editor.vsix`.
+3. Выберите скачанный или собранный файл `markdown-table-editor-plus.vsix`.
 
 Каждый релизный VSIX сопровождается файлом `SHA256SUMS.txt` и подписью происхождения сборки
 (build provenance attestation), созданной GitHub Actions.
