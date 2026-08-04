@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest a table editing capability or a change to an existing command
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What does editing a table cost you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include a before and after table if the change affects table output.
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: parity
+    attributes:
+      label: Should the JetBrains and Notepad++ editions behave the same way?
+      options:
+        - Yes, this belongs in the shared table engine
+        - No, this is specific to VS Code
+        - Not sure
+    validations:
+      required: true

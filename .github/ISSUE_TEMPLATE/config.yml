@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/krotname/VsCodeMarkdownTableEditor/security/advisories/new
+    about: Report privately through GitHub security advisories instead of a public issue.
+  - name: Question or usage help
+    url: https://github.com/krotname/VsCodeMarkdownTableEditor/discussions
+    about: Ask about behavior, shortcuts, or settings.
+  - name: Other editions
+    url: https://markdowntableeditor.ru/
+    about: The same table engine for JetBrains IDEs and Notepad++.

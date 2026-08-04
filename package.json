@@ -2,7 +2,7 @@
   "name": "markdown-table-editor",
   "displayName": "Markdown Table Editor",
   "description": "Fast, local Markdown table editing for Visual Studio Code.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "krotname",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -13,14 +13,29 @@
     "url": "https://github.com/krotname/VsCodeMarkdownTableEditor/issues"
   },
   "homepage": "https://github.com/krotname/VsCodeMarkdownTableEditor#readme",
+  "qna": "https://github.com/krotname/VsCodeMarkdownTableEditor/issues",
   "engines": {
     "vscode": "^1.96.0"
   },
   "categories": ["Formatters", "Other"],
   "keywords": ["markdown", "table", "formatter", "csv", "tsv"],
   "icon": "docs/icon.png",
+  "galleryBanner": {
+    "color": "#0F172A",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "extensionKind": ["ui", "workspace"],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "The extension only rewrites Markdown tables in the open editor and never executes workspace content."
+    },
+    "virtualWorkspaces": true
+  },
   "main": "./dist/extension.js",
-  "files": ["dist/extension.js", "dist/extension.js.map", "docs/icon.png", "LICENSE", "README.md", "README.en.md", "CHANGELOG.md", "PRIVACY.md"],
+  "activationEvents": ["onLanguage:markdown"],
+  "files": ["dist/extension.js", "dist/extension.js.map", "docs/icon.png", "LICENSE", "README.md", "README.en.md", "CHANGELOG.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md"],
   "scripts": {
     "clean": "node scripts/clean.mjs",
     "build": "node scripts/build.mjs",
