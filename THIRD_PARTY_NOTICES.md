@@ -2,7 +2,7 @@
 
 ## Distributed extension
 
-The published `markdown-table-editor.vsix` does not bundle third-party runtime code. It contains
+The published `md-table-editor.vsix` does not bundle third-party runtime code. It contains
 the bundled extension entry point built from this repository's TypeScript sources, its source map,
 the extension manifest, the icon, and the project documentation, including the GPL-3.0-or-later
 license text.

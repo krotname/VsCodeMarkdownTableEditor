@@ -99,10 +99,10 @@ cells without changing what each row means:
 
 From a VSIX:
 
-1. Download `markdown-table-editor.vsix` from the [latest release](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
+1. Download `md-table-editor.vsix` from the [latest release](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
    or build it locally with `npm run package`.
 2. Run `Extensions: Install from VSIX...` in VS Code.
-3. Select the downloaded or built `markdown-table-editor.vsix`.
+3. Select the downloaded or built `md-table-editor.vsix`.
 
 Every released VSIX ships with a `SHA256SUMS.txt` file and a GitHub Actions build provenance
 attestation.

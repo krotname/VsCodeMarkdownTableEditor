@@ -1,20 +1,24 @@
 # Visual Studio Marketplace submission
 
-Status: release metadata for version `0.2.0`, the first public Marketplace submission.
+Status: release metadata for version `0.2.1`, the first public Marketplace submission.
 Keep the version here in sync with `package.json`; the publish workflow refuses a mismatch.
+
+The Marketplace rejects an extension `name` that any publisher already uses, and
+`markdown-table-editor` is taken by an unrelated extension, so this project publishes as
+`md-table-editor`. The display name is unaffected.
 
 ## Artifact
 
-- Version: `0.2.0`
-- VSIX: `build/markdown-table-editor.vsix`, produced by `npm run package`
+- Version: `0.2.1`
+- VSIX: `build/md-table-editor.vsix`, produced by `npm run package`
 - Checksum: `build/SHA256SUMS.txt`, produced by the release and publish workflows
 - Marketplace item: fill after upload
 - Marketplace verification status: fill after upload
-- GitHub release: fill after tagging `v0.2.0`
+- GitHub release: fill after tagging `v0.2.1`
 
 ## Extension metadata
 
-- Extension identifier: `krotname.markdown-table-editor`
+- Extension identifier: `krotname.md-table-editor`
 - Display name: `Markdown Table Editor`
 - Publisher: `krotname`
 - Categories: `Formatters`, `Other`
@@ -36,9 +40,11 @@ Edit Markdown pipe tables directly in VS Code: align with `Tab`, fit the table w
 widen columns, sort rows, convert CSV/TSV, insert tables by size, and move rows or columns without
 leaving the editor. Everything runs locally, with no telemetry and no network access.
 
-## Marketplace release notes for 0.2.0
+## Marketplace release notes for 0.2.1
 
 ```markdown
+- The extension is published as `krotname.md-table-editor`; the Marketplace already had the
+  `markdown-table-editor` name in use by an unrelated extension.
 - The table engine is a faithful port of the shared JetBrains/Notepad++ core and matches it byte
   for byte across the differential corpus, correcting table detection, header protection, caret
   placement, width fitting, and CSV/TSV whitespace handling.
@@ -51,13 +57,13 @@ leaving the editor. Everything runs locally, with no telemetry and no network ac
 ## Automated submission
 
 Run the **Publish to VS Code Marketplace** workflow from `main`: start with `dry-run`, then use
-`publish` with the confirmation `markdown-table-editor:0.2.0`. The verify job builds the VSIX,
+`publish` with the confirmation `md-table-editor:0.2.1`. The verify job builds the VSIX,
 installs it into a throwaway VS Code profile, and records a checksum without ever seeing the
 Marketplace token. The publish job then waits for approval in the `marketplace` GitHub environment,
 which holds the `VSCE_PAT` secret, verifies the checksum of the artifact built by the verify job,
 and uploads exactly that file with `vsce publish --packagePath`.
 
-Locally the same upload is `npx vsce publish --packagePath build/markdown-table-editor.vsix` with
+Locally the same upload is `npx vsce publish --packagePath build/md-table-editor.vsix` with
 `VSCE_PAT` set in the environment.
 
 ## Manual submission
@@ -65,7 +71,7 @@ Locally the same upload is `npx vsce publish --packagePath build/markdown-table-
 1. Sign in at <https://marketplace.visualstudio.com/manage> with the Microsoft account that owns
    the `krotname` publisher, creating the publisher first if it does not exist.
 2. Open the publisher page and choose `New extension` / `Visual Studio Code`.
-3. Upload `build/markdown-table-editor.vsix`.
+3. Upload `build/md-table-editor.vsix`.
 4. Confirm that the rendered README, icon, categories, license, and repository links are correct.
 5. Wait for the automated Marketplace verification to finish and record the resulting status above.
 

@@ -73,11 +73,11 @@ jobs:
       - run: npm ci
       - run: npm run package
       - run: npm run test:vsix
-      - run: sha256sum build/markdown-table-editor.vsix > build/SHA256SUMS.txt
+      - run: sha256sum build/md-table-editor.vsix > build/SHA256SUMS.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: markdown-table-editor-vsix
+          name: md-table-editor-vsix
           path: |
-            build/markdown-table-editor.vsix
+            build/md-table-editor.vsix
             build/SHA256SUMS.txt
           if-no-files-found: error

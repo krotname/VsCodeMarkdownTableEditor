@@ -16,7 +16,7 @@ on:
           - dry-run
           - publish
       confirmation:
-        description: For publish, type markdown-table-editor:<version>.
+        description: For publish, type md-table-editor:<version>.
         required: false
         type: string
 
@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: markdown-table-editor-marketplace
+  group: md-table-editor-marketplace
   cancel-in-progress: false
 
 jobs:
@@ -66,12 +66,12 @@ jobs:
               echo "Publishing is allowed only from refs/heads/main; got '$RELEASE_REF'." >&2
               exit 1
             fi
-            if [ "$RELEASE_CONFIRMATION" != "markdown-table-editor:$RELEASE_VERSION" ]; then
-              echo "Publish confirmation must exactly match 'markdown-table-editor:$RELEASE_VERSION'." >&2
+            if [ "$RELEASE_CONFIRMATION" != "md-table-editor:$RELEASE_VERSION" ]; then
+              echo "Publish confirmation must exactly match 'md-table-editor:$RELEASE_VERSION'." >&2
               exit 1
             fi
           fi
-          echo "Validated $RELEASE_MODE request for markdown-table-editor:$RELEASE_VERSION."
+          echo "Validated $RELEASE_MODE request for md-table-editor:$RELEASE_VERSION."
 
       - run: npm ci
       # npm run package runs typecheck, unit tests, and the bundle build before vsce package.
@@ -79,13 +79,13 @@ jobs:
       - run: npm run test:vsix
 
       - name: Record the artifact checksum
-        run: sha256sum build/markdown-table-editor.vsix > build/SHA256SUMS.txt
+        run: sha256sum build/md-table-editor.vsix > build/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: marketplace-${{ inputs.version }}-${{ inputs.mode }}
           path: |
-            build/markdown-table-editor.vsix
+            build/md-table-editor.vsix
             build/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
@@ -132,11 +132,11 @@ jobs:
             exit 1
           fi
           sha256sum --check build/SHA256SUMS.txt
-          echo "Publishing markdown-table-editor:$RELEASE_VERSION from main."
+          echo "Publishing md-table-editor:$RELEASE_VERSION from main."
 
       - run: npm ci
 
       - name: Publish the verified VSIX
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --no-install vsce publish --packagePath build/markdown-table-editor.vsix
+        run: npx --no-install vsce publish --packagePath build/md-table-editor.vsix
