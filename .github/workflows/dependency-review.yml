@@ -1,8 +1,9 @@
 name: Dependency Review
 
+# Pull request only: the action compares the base and head of a pull request, and a
+# workflow_dispatch run has no such refs to compare.
 on:
   pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
