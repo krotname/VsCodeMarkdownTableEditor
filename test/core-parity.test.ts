@@ -108,3 +108,63 @@ test('delimited conversion keeps cell text verbatim and reports the shared messa
   assert.equal(fromDelimited('').message, 'No CSV or TSV data found');
   assert.equal(fromDelimited('no delimiter').message, 'No CSV or TSV data found');
 });
+
+test('fitting keeps sparse rows that wrapping could not have produced', () => {
+  // The third row sets the column width, so "second" would still have fitted after "short".
+  // Wrapping is greedy and never leaves that room, so these are two records, not one wrapped row.
+  const table = [
+    '| Name  | Note                     |',
+    '| ----- | ------------------------ |',
+    '| Alice | short                    |',
+    '|       | second                   |',
+    '| Bob   | a much longer value here |',
+  ];
+  const result = applyWrappedToWidth(table, 0, 0, 200);
+  assert.deepEqual(result.lines, table);
+  assert.equal(result.changed, false);
+
+  // Wrapping fills a cell's segments from the top, so "b" cannot be the second segment of an
+  // empty cell.
+  const underEmpty = applyWrappedToWidth(['| A | B |', '| --- | --- |', '| a |  |', '|  | b |'], 0, 0, 200);
+  assert.deepEqual(underEmpty.lines, ['| A   | B   |', '| --- | --- |', '| a   |     |', '|     | b   |']);
+});
+
+test('fitting still rejoins rows that wrapping produced', () => {
+  const wrapped = [
+    '| Key | Description        |',
+    '| --- | ------------------ |',
+    '| x   | alpha beta gamma   |',
+    '|     | delta epsilon zeta |',
+  ];
+  const result = applyWrappedToWidth(wrapped, 0, 0, 120);
+  assert.equal(result.lines.length, 3);
+  assert.ok((result.lines[2] ?? '').includes('alpha beta gamma delta epsilon zeta'), result.lines.join('\n'));
+});
+
+test('a hand split word is still rejoined even when the table is not aligned', () => {
+  const result = applyWrappedToWidth(['| A | B |', '| --- | --- |', '| scrip | keep |', '| t already | |'], 0, 0, 80);
+  assert.ok((result.lines[2] ?? '').includes('script already'), result.lines.join('\n'));
+});
+
+test('fitting rejoins a body that was wrapped below the header width', () => {
+  // The header is wider than the wrap target, so the rendered column is wider than the width the
+  // body segments were actually split at.
+  const narrow = applyWrappedToWidth(
+    ['| Identifier | Description |', '| --- | --- |', '| x | alpha beta gamma delta epsilon |'],
+    2, 0, 15,
+  );
+  assert.ok(narrow.lines.length > 3, narrow.lines.join('\n'));
+  assert.equal(applyWrappedToWidth(narrow.lines, 0, 0, 200).lines.length, 3);
+});
+
+test('fitting rejoins constructs that were hard split mid token', () => {
+  // Wrapping cuts an over-wide link mid-token, so a fragment no longer parses as a link.
+  const narrow = applyWrappedToWidth(
+    ['| A | B |', '| --- | --- |', '| [x y](url) [x y](url) | a |'],
+    2, 0, 18,
+  );
+  assert.ok(narrow.lines.length > 3, narrow.lines.join('\n'));
+  const wide = applyWrappedToWidth(narrow.lines, 0, 0, 200);
+  assert.equal(wide.lines.length, 3);
+  assert.ok((wide.lines[2] ?? '').includes('[x y](url) [x y](url)'), wide.lines.join('\n'));
+});
