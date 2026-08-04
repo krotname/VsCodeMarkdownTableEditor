@@ -4,6 +4,15 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-04
+
+### Changed
+
+- The extension identifier is now `krotname.md-table-editor`. The Marketplace requires an
+  extension `name` that no other publisher uses, and `markdown-table-editor` was already taken,
+  so the package name and the built VSIX file name changed. The display name, commands,
+  settings, and behaviour are unchanged.
+
 ## [0.2.0] - 2026-08-04
 
 ### Added

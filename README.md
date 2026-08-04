@@ -99,10 +99,10 @@ Markdown Table Editor превращает VS Code в удобный редак�
 
 Из VSIX:
 
-1. Скачайте `markdown-table-editor.vsix` из [последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
+1. Скачайте `md-table-editor.vsix` из [последнего релиза](https://github.com/krotname/VsCodeMarkdownTableEditor/releases/latest)
    или соберите его локально командой `npm run package`.
 2. В VS Code выполните `Extensions: Install from VSIX...`.
-3. Выберите скачанный или собранный файл `markdown-table-editor.vsix`.
+3. Выберите скачанный или собранный файл `md-table-editor.vsix`.
 
 Каждый релизный VSIX сопровождается файлом `SHA256SUMS.txt` и подписью происхождения сборки
 (build provenance attestation), созданной GitHub Actions.

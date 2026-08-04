@@ -1,8 +1,8 @@
 {
-  "name": "markdown-table-editor",
+  "name": "md-table-editor",
   "displayName": "Markdown Table Editor",
   "description": "Fast, local Markdown table editing for Visual Studio Code.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "krotname",
   "license": "GPL-3.0-or-later",
   "repository": {

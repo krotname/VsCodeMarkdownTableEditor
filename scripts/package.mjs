@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 await mkdir('build', { recursive: true });
 const cli = join('node_modules', '@vscode', 'vsce', 'vsce');
-const result = spawnSync(process.execPath, [cli, 'package', '--no-dependencies', '--out', 'build/markdown-table-editor.vsix'], {
+const result = spawnSync(process.execPath, [cli, 'package', '--no-dependencies', '--out', 'build/md-table-editor.vsix'], {
   stdio: 'inherit',
 });
 if (result.error) throw result.error;
