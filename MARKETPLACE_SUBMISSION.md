@@ -16,7 +16,7 @@ This project therefore publishes as `krotname.markdown-table-editor-plus` with t
 - Checksum: `build/SHA256SUMS.txt`, produced by the release and publish workflows
 - Marketplace item: fill after upload
 - Marketplace verification status: fill after upload
-- GitHub release: fill after tagging `v0.2.1`
+- GitHub release: fill after tagging `v0.2.2`
 
 ## Extension metadata
 
@@ -55,7 +55,7 @@ Edit Markdown pipe tables directly in VS Code: align with `Tab`, fit the table w
 widen columns, sort rows, convert CSV/TSV, insert tables by size, and move rows or columns without
 leaving the editor. Everything runs locally, with no telemetry and no network access.
 
-## Marketplace release notes for 0.2.1
+## Marketplace release notes for 0.2.2
 
 ```markdown
 - The extension is published as `krotname.markdown-table-editor-plus` with the display name
