@@ -145,3 +145,26 @@ test('a hand split word is still rejoined even when the table is not aligned', (
   const result = applyWrappedToWidth(['| A | B |', '| --- | --- |', '| scrip | keep |', '| t already | |'], 0, 0, 80);
   assert.ok((result.lines[2] ?? '').includes('script already'), result.lines.join('\n'));
 });
+
+test('fitting rejoins a body that was wrapped below the header width', () => {
+  // The header is wider than the wrap target, so the rendered column is wider than the width the
+  // body segments were actually split at.
+  const narrow = applyWrappedToWidth(
+    ['| Identifier | Description |', '| --- | --- |', '| x | alpha beta gamma delta epsilon |'],
+    2, 0, 15,
+  );
+  assert.ok(narrow.lines.length > 3, narrow.lines.join('\n'));
+  assert.equal(applyWrappedToWidth(narrow.lines, 0, 0, 200).lines.length, 3);
+});
+
+test('fitting rejoins constructs that were hard split mid token', () => {
+  // Wrapping cuts an over-wide link mid-token, so a fragment no longer parses as a link.
+  const narrow = applyWrappedToWidth(
+    ['| A | B |', '| --- | --- |', '| [x y](url) [x y](url) | a |'],
+    2, 0, 18,
+  );
+  assert.ok(narrow.lines.length > 3, narrow.lines.join('\n'));
+  const wide = applyWrappedToWidth(narrow.lines, 0, 0, 200);
+  assert.equal(wide.lines.length, 3);
+  assert.ok((wide.lines[2] ?? '').includes('[x y](url) [x y](url)'), wide.lines.join('\n'));
+});

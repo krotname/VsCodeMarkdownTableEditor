@@ -1125,35 +1125,17 @@ function nonEmptyCellCount(row: Row): number {
 }
 
 /**
- * The first token of a cell exactly as {@link wrapCellSegments} would split it, so Markdown links
- * and code spans stay whole.
- */
-function firstWrapToken(cell: string): string {
-  const value = trim(cell);
-  if (value.length === 0) return '';
-
-  let end = 0;
-  if (value[0] === '`') end = markdownCodeSpanEnd(value, 0);
-  else if (startsMarkdownLinkAt(value, 0)) end = markdownLinkEnd(value, 0);
-  else {
-    while (end < value.length && !isSpace(at(value, end))) end += charCount(codePointAt(value, end));
-  }
-  return value.slice(0, Math.min(end, value.length));
-}
-
-/**
- * Column widths a wrap would have used, measured only over rows that cannot themselves be
- * continuations.
+ * Column widths a wrap would have used, measured only over body rows that fill every column.
  *
- * A continuation row must leave at least one column empty, so rows that fill every column carry the
- * real width. Measuring the continuation candidates too would let a hand-split row widen the very
- * column it is tested against.
+ * Header rows are never wrapped, so a header wider than the wrap target would report a width the
+ * body was never split at. A continuation row must leave at least one column empty, so measuring
+ * the candidates too would let a hand-split row widen the very column it is tested against.
  */
 function wrappingReferenceWidths(table: Table): number[] {
   const widths = uniformWidths(table, 1);
-  for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
+  for (let rowIndex = table.separatorRow + 1; rowIndex < table.rows.length; rowIndex += 1) {
     const row = table.rows[rowIndex] as Row;
-    if (!row.separator && rowIndex > table.separatorRow && nonEmptyCellCount(row) !== table.columns) continue;
+    if (row.separator || nonEmptyCellCount(row) !== table.columns) continue;
     growWidthsToFit(widths, row, table.columns);
   }
   return widths;
@@ -1163,9 +1145,14 @@ function wrappingReferenceWidths(table: Table): number[] {
  * Whether `row` could have been produced by wrapping the cells of `previousSegment` at `widths`.
  *
  * Wrapping leaves a checkable trace. It fills a cell's segments from the top, so a segment never
- * sits under an empty one, and it is greedy, so it never leaves room for the next token. A row that
- * breaks either rule is ordinary sparse data that merely looks like wrapping output, and merging it
- * would destroy a record.
+ * sits under an empty one, and it never splits a cell that fits, so a cell that would still have
+ * fitted after the previous segment was never wrapped away from it. A row that breaks either rule
+ * is ordinary sparse data that merely looks like wrapping output, and merging it would destroy a
+ * record.
+ *
+ * The second test deliberately measures the whole cell rather than its first token. A segment can
+ * be a fragment of a construct that was hard-split mid-token, and re-tokenising such a fragment
+ * would under-measure it and reject a genuine continuation.
  */
 function couldFollowWrappedSegment(
   previousSegment: Row | undefined,
@@ -1183,7 +1170,7 @@ function couldFollowWrappedSegment(
     if (!cellHasText(previousCell)) return false;
 
     const width = column < widths.length ? (widths[column] as number) : 0;
-    if (displayWidth(previousCell) + 1 + displayWidth(firstWrapToken(cell)) <= width) return false;
+    if (displayWidth(previousCell) + 1 + displayWidth(trim(cell)) <= width) return false;
   }
   return true;
 }
