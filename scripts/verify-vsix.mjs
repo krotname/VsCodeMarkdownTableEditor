@@ -6,7 +6,7 @@ import { runVSCodeCommand } from '@vscode/test-electron';
 const root = process.cwd();
 const { name, publisher, version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const expected = `${publisher}.${name}@${version}`;
-const vsix = join(root, 'build', 'md-table-editor.vsix');
+const vsix = join(root, 'build', 'markdown-table-editor-plus.vsix');
 const extensionsDirectory = join(root, 'build', 'vsix-extensions');
 const userDataDirectory = join(root, 'build', 'vsix-user-data');
 const profileArgs = ['--extensions-dir', extensionsDirectory, '--user-data-dir', userDataDirectory];

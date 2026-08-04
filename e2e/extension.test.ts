@@ -18,7 +18,7 @@ suiteTeardown(async () => {
 });
 
 test('extension activates and aligns an actual VS Code document', async () => {
-  const extension = vscode.extensions.getExtension('krotname.md-table-editor');
+  const extension = vscode.extensions.getExtension('krotname.markdown-table-editor-plus');
   assert.ok(extension);
   await extension.activate();
   await vscode.commands.executeCommand('markdownTableEditor.align');

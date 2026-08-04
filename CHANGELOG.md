@@ -4,6 +4,15 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-04
+
+### Changed
+
+- The Marketplace display name is now `Markdown Table Editor Plus`, and the extension identifier
+  is `krotname.markdown-table-editor-plus`. The Marketplace requires a display name that no other
+  extension already uses, and `Markdown Table Editor` belongs to an unrelated extension, so upload
+  was refused regardless of the identifier. Commands, settings, and behaviour are unchanged.
+
 ### Added
 
 - Real VS Code screenshots and a demo GIF in `docs/`, linked from both READMEs and reusable
@@ -13,10 +22,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ### Changed
 
-- The extension identifier is now `krotname.md-table-editor`. The Marketplace requires an
-  extension `name` that no other publisher uses, and `markdown-table-editor` was already taken,
-  so the package name and the built VSIX file name changed. The display name, commands,
-  settings, and behaviour are unchanged.
+- Renamed the extension identifier away from `markdown-table-editor`, which the Marketplace
+  reported as already in use. Commands, settings, and behaviour are unchanged.
 
 ## [0.2.0] - 2026-08-04
 
