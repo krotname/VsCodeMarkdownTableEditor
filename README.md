@@ -26,6 +26,22 @@ Markdown Table Editor превращает VS Code в удобный редак�
 Все три версии используют одно и то же поведение ядра и проверяются общим набором эталонных
 данных `markdown-table-core-golden.json`, поэтому таблица выглядит одинаково в любом редакторе.
 
+## Демо
+
+![Выравнивание Markdown-таблицы в VS Code](docs/demo.gif)
+
+GIF собран из реальных скриншотов VS Code под Windows: чистый профиль с установленным VSIX,
+обычный `.md` файл, выравнивание по `Tab`, конвертация CSV, Command Palette, сортировка строк
+и вставка новой таблицы.
+
+![Скриншоты Markdown Table Editor в VS Code](docs/marketplace-screenshots/contact-sheet.png)
+
+Отдельные кадры для Marketplace: [выравнивание по `Tab`](docs/marketplace-screenshots/01-align-table-tab.png),
+[сортировка строк](docs/marketplace-screenshots/02-sort-rows-by-column.png),
+[конвертация CSV/TSV](docs/marketplace-screenshots/03-convert-csv-tsv-to-markdown.png),
+[вставка таблицы](docs/marketplace-screenshots/04-insert-edit-markdown-table.png),
+[команды в Command Palette](docs/marketplace-screenshots/05-complete-workflow-command-palette.png).
+
 ## Как это выглядит
 
 Было — таблица, набранная руками:

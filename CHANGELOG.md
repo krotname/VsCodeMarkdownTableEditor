@@ -4,6 +4,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Added
+
+- Real VS Code screenshots and a demo GIF in `docs/`, linked from both READMEs and reusable
+  for the Marketplace listing.
+
 ## [0.2.1] - 2026-08-04
 
 ### Changed

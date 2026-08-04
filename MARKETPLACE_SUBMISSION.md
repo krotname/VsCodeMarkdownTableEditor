@@ -34,6 +34,19 @@ The Marketplace rejects an extension `name` that any publisher already uses, and
 - Issues and Q&A: `https://github.com/krotname/VsCodeMarkdownTableEditor/issues`
 - Project site: `https://markdowntableeditor.ru/`
 
+## Screenshots
+
+Real VS Code captures live in `docs/marketplace-screenshots/` and are linked from both READMEs;
+the listing renders them from the repository, so they must be on `main` before the upload.
+
+- `01-align-table-tab.png` — a table aligned by pressing `Tab`
+- `02-sort-rows-by-column.png` — rows sorted by the column under the cursor
+- `03-convert-csv-tsv-to-markdown.png` — CSV with quoted fields turned into a table
+- `04-insert-edit-markdown-table.png` — a table inserted by size
+- `05-complete-workflow-command-palette.png` — the commands in the Command Palette
+- `contact-sheet.png` — all five frames in one image
+- `docs/demo.gif` — the same flow as an animation
+
 ## Short description
 
 Edit Markdown pipe tables directly in VS Code: align with `Tab`, fit the table width, narrow or
