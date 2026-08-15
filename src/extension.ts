@@ -33,6 +33,7 @@ const commandActions: Record<string, Action> = {
 
 let internalEdit = false;
 let autoTimer: NodeJS.Timeout | undefined;
+let autoRequest: { document: vscode.TextDocument; rows: number[]; power: boolean } | undefined;
 
 function documentLines(document: vscode.TextDocument): string[] {
   return Array.from({ length: document.lineCount }, (_, line) => document.lineAt(line).text);
@@ -48,6 +49,7 @@ async function replaceTable(
   range: TableRange,
   result: EditResult,
   reveal = true,
+  preserveSelections = false,
 ): Promise<boolean> {
   if (!result.ok) return false;
   const endLine = editor.document.lineAt(range.lastRow);
@@ -58,22 +60,27 @@ async function replaceTable(
       const applied = await editor.edit((builder) => builder.replace(editRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
       if (!applied) return false;
     }
-    const targetLine = Math.min(range.firstRow + result.targetRow, editor.document.lineCount - 1);
-    const line = editor.document.lineAt(targetLine).text;
-    const position = new vscode.Position(targetLine, Math.min(result.targetColumnOffset, line.length));
-    editor.selection = new vscode.Selection(position, position);
-    if (reveal) editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    if (!preserveSelections) {
+      const targetLine = Math.min(range.firstRow + result.targetRow, editor.document.lineCount - 1);
+      const line = editor.document.lineAt(targetLine).text;
+      const position = new vscode.Position(targetLine, Math.min(result.targetColumnOffset, line.length));
+      editor.selection = new vscode.Selection(position, position);
+      if (reveal) editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    }
     return true;
   } finally {
     internalEdit = false;
   }
 }
 
-async function runAction(action: Action, silent = false): Promise<boolean> {
-  const editor = activeMarkdownEditor();
-  if (!editor) return false;
+async function runActionAt(
+  editor: vscode.TextEditor,
+  position: vscode.Position,
+  action: Action,
+  silent = false,
+  preserveSelections = false,
+): Promise<boolean> {
   const lines = documentLines(editor.document);
-  const position = editor.selection.active;
   const range = findTableRange(lines, position.line);
   if (!range.found) {
     if (!silent) void vscode.window.showInformationMessage('Markdown Table Editor: no table at the cursor.');
@@ -81,19 +88,33 @@ async function runAction(action: Action, silent = false): Promise<boolean> {
   }
   const column = columnFromCursor(lines[position.line] ?? '', position.character);
   const result = apply(lines, position.line, column, action);
-  return replaceTable(editor, range, result, !silent);
+  return replaceTable(editor, range, result, !silent, preserveSelections);
+}
+
+async function runAction(action: Action, silent = false): Promise<boolean> {
+  const editor = activeMarkdownEditor();
+  if (!editor) return false;
+  return runActionAt(editor, editor.selection.active, action, silent);
+}
+
+async function runFitAt(
+  editor: vscode.TextEditor,
+  position: vscode.Position,
+  silent = false,
+  preserveSelections = false,
+): Promise<boolean> {
+  const lines = documentLines(editor.document);
+  const range = findTableRange(lines, position.line);
+  if (!range.found) return false;
+  const width = vscode.workspace.getConfiguration('markdownTableEditor', editor.document.uri).get<number>('fitWidth', 120);
+  const column = columnFromCursor(lines[position.line] ?? '', position.character);
+  return replaceTable(editor, range, applyWrappedToWidth(lines, position.line, column, width), !silent, preserveSelections);
 }
 
 async function runFit(silent = false): Promise<boolean> {
   const editor = activeMarkdownEditor();
   if (!editor) return false;
-  const lines = documentLines(editor.document);
-  const position = editor.selection.active;
-  const range = findTableRange(lines, position.line);
-  if (!range.found) return false;
-  const width = vscode.workspace.getConfiguration('markdownTableEditor', editor.document.uri).get<number>('fitWidth', 120);
-  const column = columnFromCursor(lines[position.line] ?? '', position.character);
-  return replaceTable(editor, range, applyWrappedToWidth(lines, position.line, column, width), !silent);
+  return runFitAt(editor, editor.selection.active, silent);
 }
 
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
@@ -161,11 +182,30 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
   const configuration = vscode.workspace.getConfiguration('markdownTableEditor', event.document.uri);
   const power = configuration.get<boolean>('powerAutoFit', false);
   if (!power && !configuration.get<boolean>('lightAutoAlign', true)) return;
+  const lines = documentLines(event.document);
+  const rows = new Set<number>();
+  for (const change of event.contentChanges) {
+    const line = Math.min(change.range.start.line, lines.length - 1);
+    const range = findTableRange(lines, line);
+    if (range.found) rows.add(range.firstRow);
+  }
+  if (rows.size === 0) return;
   if (autoTimer) clearTimeout(autoTimer);
-  autoTimer = setTimeout(() => {
+  if (autoRequest?.document === event.document) {
+    for (const row of autoRequest.rows) rows.add(row);
+  }
+  autoRequest = { document: event.document, rows: [...rows], power };
+  autoTimer = setTimeout(async () => {
+    const request = autoRequest;
+    autoRequest = undefined;
+    autoTimer = undefined;
     const editor = activeMarkdownEditor();
-    if (!editor || editor.document !== event.document) return;
-    void (power ? runFit(true) : runAction(Action.ALIGN, true));
+    if (!request || !editor || editor.document !== request.document) return;
+    for (const row of request.rows.sort((left, right) => right - left)) {
+      const position = new vscode.Position(Math.min(row, editor.document.lineCount - 1), 0);
+      if (request.power) await runFitAt(editor, position, true, true);
+      else await runActionAt(editor, position, Action.ALIGN, true, true);
+    }
   }, 250);
 }
 
@@ -199,4 +239,5 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   if (autoTimer) clearTimeout(autoTimer);
+  autoRequest = undefined;
 }
