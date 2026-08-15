@@ -4,6 +4,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Fixed
+
+- Automatic alignment now formats the table that was actually edited even if the caret moves to
+  another table before the debounce timer fires.
+- Automatic alignment handles multi-cursor edits across separate tables without collapsing or
+  moving the editor selections.
+
 ## [0.2.3] - 2026-08-04
 
 ### Changed
