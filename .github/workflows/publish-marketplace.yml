@@ -88,7 +88,7 @@ jobs:
             build/markdown-table-editor-plus.vsix
             build/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
   # The token lives in the "marketplace" environment, which requires reviewer approval and is
   # limited to protected branches. Dropping the environment from this job would also drop access
