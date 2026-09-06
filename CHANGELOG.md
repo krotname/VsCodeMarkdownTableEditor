@@ -4,12 +4,21 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-06
+
 ### Fixed
 
 - Automatic alignment now formats the table that was actually edited even if the caret moves to
   another table before the debounce timer fires.
 - Automatic alignment handles multi-cursor edits across separate tables without collapsing or
   moving the editor selections.
+
+### Changed
+
+- The three Markdown Table Editor cores - this extension, the JetBrains plugin, and the Notepad++
+  plugin - now expose the same engine surface. The shared golden fixture grew a `separatorLines`
+  and a `ranges` section, so `isPotentialSeparatorLine` and `findTableRanges` are checked against
+  the same expectations in all three repositories; `schemaVersion` is now `2`.
 
 ## [0.2.3] - 2026-08-04
 
