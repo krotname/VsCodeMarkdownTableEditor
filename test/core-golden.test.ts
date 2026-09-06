@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { Action, apply, fromDelimited, type EditResult } from '../src/core.js';
+import {
+  Action,
+  apply,
+  findTableRanges,
+  fromDelimited,
+  isPotentialSeparatorLine,
+  type EditResult,
+} from '../src/core.js';
 
 interface ConversionScenario {
   name: string;
@@ -23,10 +30,24 @@ interface EditScenario {
   targetColumn?: number;
 }
 
+interface SeparatorLineScenario {
+  name: string;
+  input: string;
+  separator: boolean;
+}
+
+interface RangeScenario {
+  name: string;
+  input: string[];
+  ranges: { firstRow: number; lastRow: number }[];
+}
+
 interface GoldenFixtures {
   schemaVersion: number;
   conversion: ConversionScenario[];
   edits: EditScenario[];
+  separatorLines: SeparatorLineScenario[];
+  ranges: RangeScenario[];
 }
 
 const fixturePath = join(process.cwd(), 'test-fixtures', 'markdown-table-core-golden.json');
@@ -39,7 +60,7 @@ function assertScenario(result: EditResult, scenario: ConversionScenario | EditS
   if ('targetColumn' in scenario && scenario.targetColumn !== undefined) assert.equal(result.targetColumn, scenario.targetColumn);
 }
 
-test('fixture schema is the shared core schema', () => assert.equal(fixtures.schemaVersion, 1));
+test('fixture schema is the shared core schema', () => assert.equal(fixtures.schemaVersion, 2));
 
 for (const scenario of fixtures.conversion) {
   test(`golden conversion: ${scenario.name}`, () => assertScenario(fromDelimited(scenario.input), scenario));
@@ -48,5 +69,20 @@ for (const scenario of fixtures.conversion) {
 for (const scenario of fixtures.edits) {
   test(`golden edit: ${scenario.name}`, () => {
     assertScenario(apply(scenario.input, scenario.row, scenario.column, Action[scenario.action]), scenario);
+  });
+}
+
+for (const scenario of fixtures.separatorLines) {
+  test(`golden separator line: ${scenario.name}`, () => {
+    assert.equal(isPotentialSeparatorLine(scenario.input), scenario.separator);
+  });
+}
+
+for (const scenario of fixtures.ranges) {
+  test(`golden ranges: ${scenario.name}`, () => {
+    assert.deepEqual(
+      findTableRanges(scenario.input).map((range) => ({ firstRow: range.firstRow, lastRow: range.lastRow })),
+      scenario.ranges,
+    );
   });
 }
