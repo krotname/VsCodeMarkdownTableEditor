@@ -83,7 +83,7 @@ async function runActionAt(
   const lines = documentLines(editor.document);
   const range = findTableRange(lines, position.line);
   if (!range.found) {
-    if (!silent) void vscode.window.showInformationMessage('Markdown Table Editor: no table at the cursor.');
+    if (!silent) void vscode.window.showInformationMessage(vscode.l10n.t('Markdown Table Editor: no table at the cursor.'));
     return false;
   }
   const column = columnFromCursor(lines[position.line] ?? '', position.character);
@@ -125,13 +125,23 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
   return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
 }
 
+function localizeResultMessage(message: string): string {
+  switch (message) {
+    case 'No table found': return vscode.l10n.t('No table found');
+    case 'No Markdown table found': return vscode.l10n.t('No Markdown table found');
+    case 'No CSV or TSV data found': return vscode.l10n.t('No CSV or TSV data found');
+    case 'Invalid table size': return vscode.l10n.t('Invalid table size');
+    default: return message;
+  }
+}
+
 async function convertDelimited(): Promise<void> {
   const editor = activeMarkdownEditor();
   if (!editor) return;
   const sourceRange = editor.selection.isEmpty ? delimitedBlock(editor.document, editor.selection.active.line) : new vscode.Range(editor.selection.start, editor.selection.end);
   const result = fromDelimited(editor.document.getText(sourceRange));
   if (!result.ok) {
-    void vscode.window.showErrorMessage(`Markdown Table Editor: ${result.message}`);
+    void vscode.window.showErrorMessage(vscode.l10n.t('Markdown Table Editor: {0}', localizeResultMessage(result.message)));
     return;
   }
   internalEdit = true;
@@ -145,9 +155,9 @@ async function convertDelimited(): Promise<void> {
 async function insertTable(): Promise<void> {
   const editor = activeMarkdownEditor();
   if (!editor) return;
-  const columnsText = await vscode.window.showInputBox({ prompt: 'Number of columns', value: '3', validateInput: positiveInteger });
+  const columnsText = await vscode.window.showInputBox({ prompt: vscode.l10n.t('Number of columns'), value: '3', validateInput: positiveInteger });
   if (columnsText === undefined) return;
-  const rowsText = await vscode.window.showInputBox({ prompt: 'Number of data rows', value: '2', validateInput: nonNegativeInteger });
+  const rowsText = await vscode.window.showInputBox({ prompt: vscode.l10n.t('Number of data rows'), value: '2', validateInput: nonNegativeInteger });
   if (rowsText === undefined) return;
   const result = newTable(Number(columnsText), Number(rowsText));
   if (!result.ok) return;
@@ -160,11 +170,11 @@ async function insertTable(): Promise<void> {
 }
 
 function positiveInteger(value: string): string | undefined {
-  return /^\d+$/u.test(value) && Number(value) > 0 ? undefined : 'Enter a positive integer.';
+  return /^\d+$/u.test(value) && Number(value) > 0 ? undefined : vscode.l10n.t('Enter a positive integer.');
 }
 
 function nonNegativeInteger(value: string): string | undefined {
-  return /^\d+$/u.test(value) ? undefined : 'Enter zero or a positive integer.';
+  return /^\d+$/u.test(value) ? undefined : vscode.l10n.t('Enter zero or a positive integer.');
 }
 
 async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<void> {
@@ -174,7 +184,8 @@ async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<v
   if (name === 'powerAutoFit' && next && !configuration.get<boolean>('lightAutoAlign', true)) {
     await configuration.update('lightAutoAlign', true, vscode.ConfigurationTarget.Global);
   }
-  void vscode.window.showInformationMessage(`${name === 'powerAutoFit' ? 'Power Auto Fit' : 'Light Auto Align'}: ${next ? 'on' : 'off'}`);
+  const feature = name === 'powerAutoFit' ? vscode.l10n.t('Power Auto Fit') : vscode.l10n.t('Light Auto Align');
+  void vscode.window.showInformationMessage(vscode.l10n.t('{0}: {1}', feature, next ? vscode.l10n.t('on') : vscode.l10n.t('off')));
 }
 
 function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
@@ -232,8 +243,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdownTableEditor.toggleLightAutoAlign', () => toggleSetting('lightAutoAlign')),
     vscode.commands.registerCommand('markdownTableEditor.togglePowerAutoFit', () => toggleSetting('powerAutoFit')),
     vscode.workspace.onDidChangeTextDocument(scheduleAutomaticEdit),
-    createStatusBar('markdownTableEditor.toggleLightAutoAlign', '$(table) Light', 'Toggle Markdown Table Editor light auto align', 101),
-    createStatusBar('markdownTableEditor.togglePowerAutoFit', '$(screen-full) Power', 'Toggle Markdown Table Editor power auto fit', 100),
+    createStatusBar('markdownTableEditor.toggleLightAutoAlign', `$(table) ${vscode.l10n.t('Light')}`, vscode.l10n.t('Toggle Markdown Table Editor light auto align'), 101),
+    createStatusBar('markdownTableEditor.togglePowerAutoFit', `$(screen-full) ${vscode.l10n.t('Power')}`, vscode.l10n.t('Toggle Markdown Table Editor power auto fit'), 100),
   );
 }
 

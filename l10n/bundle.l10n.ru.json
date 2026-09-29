@@ -1,0 +1,21 @@
+{
+  "Markdown Table Editor: no table at the cursor.": "Markdown Table Editor: у курсора нет таблицы.",
+  "Markdown Table Editor: {0}": "Markdown Table Editor: {0}",
+  "No table found": "Таблица не найдена",
+  "No Markdown table found": "Таблица Markdown не найдена",
+  "No CSV or TSV data found": "Данные CSV или TSV не найдены",
+  "Invalid table size": "Недопустимый размер таблицы",
+  "Number of columns": "Количество столбцов",
+  "Number of data rows": "Количество строк данных",
+  "Enter a positive integer.": "Введите положительное целое число.",
+  "Enter zero or a positive integer.": "Введите ноль или положительное целое число.",
+  "Power Auto Fit": "Усиленная автоподгонка",
+  "Light Auto Align": "Лёгкое автовыравнивание",
+  "{0}: {1}": "{0}: {1}",
+  "on": "включено",
+  "off": "выключено",
+  "Light": "Лёгкое",
+  "Power": "Подгонка",
+  "Toggle Markdown Table Editor light auto align": "Переключить лёгкое автовыравнивание Markdown Table Editor",
+  "Toggle Markdown Table Editor power auto fit": "Переключить усиленную автоподгонку Markdown Table Editor"
+}
