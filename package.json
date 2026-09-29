@@ -1,7 +1,7 @@
 {
   "name": "markdown-table-editor-plus",
-  "displayName": "Markdown Table Editor Plus",
-  "description": "Fast, local Markdown table editing for Visual Studio Code.",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.3.0",
   "publisher": "krotname",
   "license": "GPL-3.0-or-later",
@@ -29,13 +29,14 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "The extension only rewrites Markdown tables in the open editor and never executes workspace content."
+      "description": "%workspaceTrust.description%"
     },
     "virtualWorkspaces": true
   },
   "main": "./dist/extension.js",
+  "l10n": "./l10n",
   "activationEvents": ["onLanguage:markdown"],
-  "files": ["dist/extension.js", "dist/extension.js.map", "docs/icon.png", "LICENSE", "README.md", "README.en.md", "CHANGELOG.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md"],
+  "files": ["dist/extension.js", "dist/extension.js.map", "l10n/bundle.l10n.ru.json", "package.nls.json", "package.nls.ru.json", "docs/icon.png", "LICENSE", "README.md", "README.en.md", "CHANGELOG.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md"],
   "scripts": {
     "clean": "node scripts/clean.mjs",
     "build": "node scripts/build.mjs",
@@ -52,27 +53,27 @@
   },
   "contributes": {
     "commands": [
-      { "command": "markdownTableEditor.tab", "title": "Tab: Align Markdown Table", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.align", "title": "Align Table", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.fitWidth", "title": "Fit Table Width to Editor", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.nextCell", "title": "Next Cell", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.previousCell", "title": "Previous Cell", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.insertRowBelow", "title": "Insert Row Below", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.deleteRow", "title": "Delete Row", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.insertColumnRight", "title": "Insert Column Right", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.deleteColumn", "title": "Delete Column", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.narrowColumn", "title": "Narrow Column", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.widenColumn", "title": "Widen Column", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.moveRowUp", "title": "Move Row Up", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.moveRowDown", "title": "Move Row Down", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.moveColumnLeft", "title": "Move Column Left", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.moveColumnRight", "title": "Move Column Right", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.sortAscending", "title": "Sort Rows Ascending", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.sortDescending", "title": "Sort Rows Descending", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.convertDelimited", "title": "Convert CSV/TSV to Table", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.insertTable", "title": "Insert Table...", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.toggleLightAutoAlign", "title": "Toggle Light Auto Align After Edit", "category": "Markdown Table Editor" },
-      { "command": "markdownTableEditor.togglePowerAutoFit", "title": "Toggle Power Auto Fit", "category": "Markdown Table Editor" }
+      { "command": "markdownTableEditor.tab", "title": "%command.tab%", "category": "%category%" },
+      { "command": "markdownTableEditor.align", "title": "%command.align%", "category": "%category%" },
+      { "command": "markdownTableEditor.fitWidth", "title": "%command.fitWidth%", "category": "%category%" },
+      { "command": "markdownTableEditor.nextCell", "title": "%command.nextCell%", "category": "%category%" },
+      { "command": "markdownTableEditor.previousCell", "title": "%command.previousCell%", "category": "%category%" },
+      { "command": "markdownTableEditor.insertRowBelow", "title": "%command.insertRowBelow%", "category": "%category%" },
+      { "command": "markdownTableEditor.deleteRow", "title": "%command.deleteRow%", "category": "%category%" },
+      { "command": "markdownTableEditor.insertColumnRight", "title": "%command.insertColumnRight%", "category": "%category%" },
+      { "command": "markdownTableEditor.deleteColumn", "title": "%command.deleteColumn%", "category": "%category%" },
+      { "command": "markdownTableEditor.narrowColumn", "title": "%command.narrowColumn%", "category": "%category%" },
+      { "command": "markdownTableEditor.widenColumn", "title": "%command.widenColumn%", "category": "%category%" },
+      { "command": "markdownTableEditor.moveRowUp", "title": "%command.moveRowUp%", "category": "%category%" },
+      { "command": "markdownTableEditor.moveRowDown", "title": "%command.moveRowDown%", "category": "%category%" },
+      { "command": "markdownTableEditor.moveColumnLeft", "title": "%command.moveColumnLeft%", "category": "%category%" },
+      { "command": "markdownTableEditor.moveColumnRight", "title": "%command.moveColumnRight%", "category": "%category%" },
+      { "command": "markdownTableEditor.sortAscending", "title": "%command.sortAscending%", "category": "%category%" },
+      { "command": "markdownTableEditor.sortDescending", "title": "%command.sortDescending%", "category": "%category%" },
+      { "command": "markdownTableEditor.convertDelimited", "title": "%command.convertDelimited%", "category": "%category%" },
+      { "command": "markdownTableEditor.insertTable", "title": "%command.insertTable%", "category": "%category%" },
+      { "command": "markdownTableEditor.toggleLightAutoAlign", "title": "%command.toggleLightAutoAlign%", "category": "%category%" },
+      { "command": "markdownTableEditor.togglePowerAutoFit", "title": "%command.togglePowerAutoFit%", "category": "%category%" }
     ],
     "keybindings": [
       { "command": "markdownTableEditor.tab", "key": "tab", "when": "editorTextFocus && editorLangId == markdown && !editorReadonly && !inSnippetMode && !suggestWidgetVisible" },
@@ -98,11 +99,11 @@
       ]
     },
     "configuration": {
-      "title": "Markdown Table Editor",
+      "title": "%category%",
       "properties": {
-        "markdownTableEditor.lightAutoAlign": { "type": "boolean", "default": true, "description": "Align a table shortly after it is edited." },
-        "markdownTableEditor.powerAutoFit": { "type": "boolean", "default": false, "description": "Fit edited tables to the configured width. Also enables light auto align." },
-        "markdownTableEditor.fitWidth": { "type": "integer", "default": 120, "minimum": 20, "maximum": 1000, "description": "Maximum table display width used by fit commands." }
+        "markdownTableEditor.lightAutoAlign": { "type": "boolean", "default": true, "description": "%setting.lightAutoAlign%" },
+        "markdownTableEditor.powerAutoFit": { "type": "boolean", "default": false, "description": "%setting.powerAutoFit%" },
+        "markdownTableEditor.fitWidth": { "type": "integer", "default": 120, "minimum": 20, "maximum": 1000, "description": "%setting.fitWidth%" }
       }
     }
   },
