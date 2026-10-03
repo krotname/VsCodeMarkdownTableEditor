@@ -286,6 +286,21 @@ suite('adapter regressions', () => {
     });
   });
 
+  test('CSV conversion retains closed quoted trailing records before prose', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [1, 2, 3, 4]) {
+        await withEditor(['Introduction', 'A,B', 'C,D', '"single"', '"last"', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            'Introduction', '| A      | B   |', '| ------ | --- |', '| C      | D   |',
+            '| single |     |', '| last   |     |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
   test('CSV conversion includes trailing one-field records through the caret', async () => {
     for (const eol of ['\n', '\r\n']) {
       await withEditor(['Introduction', 'A,B', 'C,D', 'single', 'last', 'Following paragraph'].join(eol), async (target) => {

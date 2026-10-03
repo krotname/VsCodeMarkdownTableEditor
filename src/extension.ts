@@ -208,7 +208,7 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
     }
     // Plain records between delimited records belong to a ragged block.
     // Pending trailing records are included only through the caret above.
-    if (inQuotes || scan.hasDelimiter || scan.inQuotes) last = row;
+    if (inQuotes || scan.hasDelimiter || scan.hasQuotedField || scan.inQuotes) last = row;
     inQuotes = scan.inQuotes;
   }
   return new vscode.Range(line, 0, line, 0);
