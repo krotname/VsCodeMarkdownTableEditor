@@ -390,6 +390,23 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('caret conversion retains multiline quoted TSV after a comma-bearing header', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1, 2, 3, 4]) {
+        await withEditor(['Title, notes', 'A\t"line 1', '', 'line 2"', 'B\tok', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 0, caretLine, 0);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          const lines = target.document.getText().split(eol);
+          assert.equal(lines.length, 5);
+          assert.deepEqual(lines.slice(0, 4).filter((_, row) => row !== 1).map((row) => row.split('|').slice(1, -1).map((cell) => cell.trim())), [
+            ['Title, notes', ''], ['A', 'line 1  line 2'], ['B', 'ok'],
+          ]);
+          assert.equal(lines[4], 'Following paragraph');
+        });
+      }
+    }
+  });
+
   test('ragged CSV conversion keeps trailing tabs as padding', async () => {
     for (const caretLine of [0, 1, 2]) {
       await withEditor('Name,Note\nAnna\t\nBob\t\nFollowing paragraph', async (target) => {
@@ -514,6 +531,21 @@ suite('adapter regressions', () => {
       await waitUntil(() => target.document.lineAt(0).text === '| A   | B   |');
       assert.equal(target.document.getText(), ['| A   | B   |', '| --- | --- |', '| one | y   |'].join('\n'));
     });
+  });
+
+  test('deleting a queued table does not format the table moving into its place', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const power of [false, true]) {
+        const untouched = ['| C | D |', '| --- | --- |', '| untouched | y |'].join(eol);
+        await withEditor(['| A | B |', '| --- | --- |', '| one | x |', '', untouched].join(eol), async (target) => {
+          await vscode.workspace.getConfiguration('markdownTableEditor').update('powerAutoFit', power, vscode.ConfigurationTarget.Global);
+          assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 5), ' longer')), true);
+          assert.equal(await target.edit((builder) => builder.delete(new vscode.Range(0, 0, 4, 0))), true);
+          await delay();
+          assert.equal(target.document.getText(), untouched);
+        });
+      }
+    }
   });
 
   test('automatic alignment does not reapply a manually aligned table after undo', async () => {

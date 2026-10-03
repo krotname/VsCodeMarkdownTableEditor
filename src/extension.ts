@@ -158,6 +158,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
     } else if (character === '\t' && delimiter === ',') {
       // Keep possible TSV body records until the core can infer the delimiter.
       alternateTabs = true;
+      cellBlank = true;
     } else if (character.trim() !== '') {
       cellBlank = false;
     }
@@ -328,15 +329,19 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
     for (const offset of autoRequest.rowOffsets) {
       let mappedOffset = offset;
       let delta = 0;
+      let deleted = false;
       for (const change of changes) {
         if (offset < change.rangeOffset) break;
-        if (offset <= change.rangeOffset + change.rangeLength) {
-          mappedOffset = change.rangeOffset + delta + change.text.length;
+        // A removed header cannot transfer its request to the next table at
+        // the deletion boundary. New replacement tables are scheduled above.
+        if (change.rangeLength > 0 && offset < change.rangeOffset + change.rangeLength) {
+          deleted = true;
           break;
         }
         delta += change.text.length - change.rangeLength;
         mappedOffset = offset + delta;
       }
+      if (deleted) continue;
       const range = findTableRange(lines, event.document.positionAt(mappedOffset).line);
       if (range.found && (!historyChange || !touchedRows.has(range.firstRow))) rows.add(range.firstRow);
     }
