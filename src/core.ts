@@ -1860,6 +1860,7 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
 function detectDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
   let commas = 0;
+  let firstDelimitedRecord = true;
   let inQuotes = false;
   let cellBlank = true;
   for (let index = 0; index < text.length; index += 1) {
@@ -1875,13 +1876,17 @@ function detectDelimiter(text: string): ',' | '\t' {
       commas += 1;
       cellBlank = true;
     } else if (character === '\r' || character === '\n') {
-      // Later records may contain literal tabs in CSV fields.
-      if (tabs > 0 || commas > 0) break;
+      if (firstDelimitedRecord && tabs > 0) return '\t';
+      if (firstDelimitedRecord && commas > 0) {
+        // A comma-only header can be a single TSV cell. Check the body.
+        firstDelimitedRecord = false;
+        commas = 0;
+      }
       cellBlank = true;
     }
     else if (!isSpace(character)) cellBlank = false;
   }
-  return tabs > 0 ? '\t' : ',';
+  return tabs > 0 && (firstDelimitedRecord || commas === 0) ? '\t' : ',';
 }
 
 function parseDelimited(text: string): string[][] {

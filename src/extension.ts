@@ -141,6 +141,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
   let cellBlank = !startsInQuotes;
   let commas = 0;
   let tabs = 0;
+  let alternateTabs = false;
   for (let index = 0; index < text.length; index += 1) {
     const character = text.charAt(index);
     if (inQuotes) {
@@ -152,11 +153,14 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
       if (character === '\t') tabs += 1;
       else commas += 1;
       cellBlank = true;
+    } else if (character === '\t' && delimiter === ',') {
+      // Keep possible TSV body records until the core can infer the delimiter.
+      alternateTabs = true;
     } else if (character.trim() !== '') {
       cellBlank = false;
     }
   }
-  return { hasDelimiter: tabs + commas > 0, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
+  return { hasDelimiter: tabs + commas > 0 || alternateTabs, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
 }
 
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {

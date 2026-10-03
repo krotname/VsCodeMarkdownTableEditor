@@ -323,6 +323,30 @@ suite('adapter regressions', () => {
     });
   });
 
+  test('ragged TSV conversion recognizes a comma in the header as punctuation', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1, 2]) {
+        await withEditor(['Title, notes', 'A\tB', 'C\tD', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Title, notes |     |', '| ------------ | --- |', '| A            | B   |', '| C            | D   |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
+  test('caret conversion keeps CSV delimiters when quoted fields have tab padding', async () => {
+    await withEditor('Name,Note\nAnna,"x"\t\nBob,done\nFollowing paragraph', async (target) => {
+      target.selection = new vscode.Selection(0, 1, 0, 1);
+      await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+      assert.equal(target.document.getText(), [
+        '| Name | Note |', '| ---- | ---- |', '| Anna | x    |', '| Bob  | done |', 'Following paragraph',
+      ].join('\n'));
+    });
+  });
+
   test('TSV conversion at the caret retains fully empty records', async () => {
     await withEditor('\t\t', async (target) => {
       target.selection = new vscode.Selection(0, 1, 0, 1);
