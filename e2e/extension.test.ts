@@ -195,14 +195,17 @@ suite('adapter regressions', () => {
 
   for (const eol of ['\n', '\r\n']) {
     test(`CSV conversion preserves the selected trailing ${eol === '\n' ? 'LF' : 'CRLF'} before prose`, async () => {
-      await withEditor(['Name,Age', 'Anna,20', 'Following paragraph'].join(eol), async (target) => {
-        // A backwards, whole-line selection includes the newline before the next paragraph.
-        target.selection = new vscode.Selection(2, 0, 0, 0);
-        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
-        assert.equal(target.document.getText(), [
-          '| Name | Age |', '| ---- | --- |', '| Anna | 20  |', 'Following paragraph',
-        ].join(eol));
-      });
+      for (const blankLines of [0, 1, 2]) {
+        const spacing = Array.from({ length: blankLines }, () => '');
+        await withEditor(['Name,Age', 'Anna,20', ...spacing, 'Following paragraph'].join(eol), async (target) => {
+          // A backwards, whole-line selection includes the newlines before the next paragraph.
+          target.selection = new vscode.Selection(2 + blankLines, 0, 0, 0);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Name | Age |', '| ---- | --- |', '| Anna | 20  |', ...spacing, 'Following paragraph',
+          ].join(eol));
+        });
+      }
     });
   }
 

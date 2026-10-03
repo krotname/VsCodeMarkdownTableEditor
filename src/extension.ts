@@ -195,7 +195,8 @@ async function convertDelimited(): Promise<void> {
   internalEdit = true;
   try {
     const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-    const replacement = result.lines.join(eol) + (/[\r\n]$/u.test(source) ? eol : '');
+    const suffix = source.match(/(?:\r\n|\r|\n)+$/u)?.[0] ?? '';
+    const replacement = result.lines.join(eol) + suffix.replace(/\r\n|\r|\n/gu, eol);
     await editor.edit((builder) => builder.replace(sourceRange, replacement));
   } finally {
     internalEdit = false;
