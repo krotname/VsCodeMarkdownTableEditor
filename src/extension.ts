@@ -190,7 +190,8 @@ function delimitedBlock(
     }
     const text = row < document.lineCount ? document.lineAt(row).text : undefined;
     // Tab-only lines are valid empty TSV records, including the first record.
-    if (text === undefined || (!inQuotes && text.trim() === '' && (delimiter === ',' || !text.includes('\t')))) {
+    if (text === undefined || (!inQuotes && text.trim() === ''
+      && (!text.includes('\t') || (delimiter === ',' && first === grammar?.first)))) {
       if (first !== undefined && line >= first && line < row) {
         // The caret explicitly includes pending one-field records; otherwise
         // stop at the last unambiguous CSV/TSV record before adjacent prose.

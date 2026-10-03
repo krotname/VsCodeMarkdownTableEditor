@@ -487,6 +487,32 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('ragged TSV keeps a tab-only record before populated body rows', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1, 2, 3]) {
+        await withEditor(['Title, notes', '\t', 'A\tB', 'C\tD', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 0, caretLine, 0);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Title, notes |     |', '| ------------ | --- |', '|              |     |', '| A            | B   |', '| C            | D   |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
+  test('CSV refinement keeps a tab-only separator outside the converted range', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['Name,Note', 'Anna,done', '\t', 'Following paragraph'].join(eol), async (target) => {
+        target.selection = new vscode.Selection(0, 1, 0, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| Name | Note |', '| ---- | ---- |', '| Anna | done |', '\t', 'Following paragraph',
+        ].join(eol));
+      });
+    }
+  });
+
   test('CSV conversion includes a leading one-field header identified by the caret', async () => {
     for (const eol of ['\n', '\r\n']) {
       await withEditor(['Introduction', 'Header', 'A,B', 'C,D', 'Following paragraph'].join(eol), async (target) => {
