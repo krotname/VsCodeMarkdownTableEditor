@@ -6,7 +6,9 @@ import {
   apply,
   applyWrappedToWidth,
   columnFromCursor,
+  detectDelimiter,
   findTableRange,
+  findTableRanges,
   fromDelimited,
   newTable,
   type EditResult,
@@ -31,9 +33,25 @@ const commandActions: Record<string, Action> = {
   'markdownTableEditor.sortDescending': Action.SORT_DESCENDING,
 };
 
-let internalEdit = false;
-let autoTimer: NodeJS.Timeout | undefined;
-let autoRequest: { document: vscode.TextDocument; rows: number[]; power: boolean } | undefined;
+type AutomaticEdit = { rowOffsets: number[]; power: boolean; timer?: NodeJS.Timeout };
+const internalEdits = new Map<vscode.TextDocument, number>();
+const autoRequests = new Map<vscode.TextDocument, AutomaticEdit>();
+
+function beginInternalEdit(document: vscode.TextDocument): void {
+  internalEdits.set(document, (internalEdits.get(document) ?? 0) + 1);
+}
+
+function endInternalEdit(document: vscode.TextDocument): void {
+  const remaining = (internalEdits.get(document) ?? 1) - 1;
+  if (remaining > 0) internalEdits.set(document, remaining);
+  else internalEdits.delete(document);
+}
+
+function cancelAutomaticEdit(document: vscode.TextDocument): void {
+  const request = autoRequests.get(document);
+  if (request?.timer) clearTimeout(request.timer);
+  autoRequests.delete(document);
+}
 
 function documentLines(document: vscode.TextDocument): string[] {
   return Array.from({ length: document.lineCount }, (_, line) => document.lineAt(line).text);
@@ -54,7 +72,7 @@ async function replaceTable(
   if (!result.ok) return false;
   const endLine = editor.document.lineAt(range.lastRow);
   const editRange = new vscode.Range(range.firstRow, 0, range.lastRow, endLine.text.length);
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
     if (result.changed) {
       const applied = await editor.edit((builder) => builder.replace(editRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
@@ -69,7 +87,7 @@ async function replaceTable(
     }
     return true;
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -117,12 +135,105 @@ async function runFit(silent = false): Promise<boolean> {
   return runFitAt(editor, editor.selection.active, silent);
 }
 
-function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
-  let first = line;
-  let last = line;
-  while (first > 0 && document.lineAt(first - 1).text.trim() !== '') first -= 1;
-  while (last + 1 < document.lineCount && document.lineAt(last + 1).text.trim() !== '') last += 1;
-  return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
+type DelimitedLineScan = { hasDelimiter: boolean; hasQuotedField: boolean; inQuotes: boolean; delimiter: string | undefined };
+
+function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: string, alternateQuotes = true): DelimitedLineScan {
+  let inQuotes = startsInQuotes;
+  let hasQuotedField = startsInQuotes;
+  let cellBlank = !startsInQuotes;
+  let commas = 0;
+  let tabs = 0;
+  let alternateTabs = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text.charAt(index);
+    if (inQuotes) {
+      if (character === '"' && text[index + 1] === '"') index += 1;
+      else if (character === '"') inQuotes = false;
+    } else if (character === '"' && cellBlank) {
+      hasQuotedField = true;
+      inQuotes = true;
+    } else if (character === delimiter || (delimiter === undefined && (character === ',' || character === '\t'))) {
+      if (character === '\t') tabs += 1;
+      else commas += 1;
+      cellBlank = true;
+    } else if (character === '\t' && delimiter === ',') {
+      // Keep possible TSV body records until the core can infer the delimiter.
+      alternateTabs = true;
+      if (alternateQuotes) cellBlank = true;
+    } else if (character.trim() !== '') {
+      cellBlank = false;
+    }
+  }
+  return { hasDelimiter: tabs + commas > 0 || alternateTabs, hasQuotedField, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
+}
+
+function delimitedBlock(
+  document: vscode.TextDocument,
+  line: number,
+  grammar?: { first: number; delimiter: ',' | '\t' },
+): vscode.Range {
+  let first: number | undefined;
+  let candidateFirst: number | undefined;
+  let caretFirst: number | undefined;
+  let last = -1;
+  let inQuotes = false;
+  let delimiter: string | undefined;
+  for (let row = 0; row <= document.lineCount; row += 1) {
+    if (row === grammar?.first) {
+      // Keep the inferred block's header even when it has no chosen delimiter.
+      first = row;
+      last = row;
+      candidateFirst = undefined;
+      caretFirst = undefined;
+      inQuotes = false;
+      delimiter = grammar.delimiter;
+    }
+    const text = row < document.lineCount ? document.lineAt(row).text : undefined;
+    // Tab-only lines are valid empty TSV records, including the first record.
+    if (text === undefined || (!inQuotes && text.trim() === ''
+      && (!text.includes('\t') || (delimiter === ',' && first === grammar?.first)))) {
+      if (first !== undefined && line >= first && line < row) {
+        // The caret explicitly includes pending one-field records; otherwise
+        // stop at the last unambiguous CSV/TSV record before adjacent prose.
+        const end = Math.max(last, line);
+        const range = new vscode.Range(first, 0, end, document.lineAt(end).text.length);
+        // Refine boundaries with the chosen grammar, preserving literal quotes
+        // after tabs in CSV and after punctuation commas in TSV.
+        if (!grammar || first !== grammar.first) {
+          return delimitedBlock(document, line, { first, delimiter: detectDelimiter(document.getText(range)) });
+        }
+        return range;
+      }
+      first = undefined;
+      candidateFirst = undefined;
+      caretFirst = undefined;
+      inQuotes = false;
+      delimiter = undefined;
+      continue;
+    }
+    const scan = scanDelimitedLine(text, inQuotes, delimiter, !grammar || first !== grammar.first);
+    if (first === undefined) {
+      if (row === line) caretFirst = candidateFirst ?? row;
+      if (scan.hasDelimiter) {
+        first = Math.min(candidateFirst ?? row, caretFirst ?? row);
+        last = row;
+        inQuotes = scan.inQuotes;
+        delimiter = scan.delimiter;
+      } else if (scan.inQuotes || scan.hasQuotedField || candidateFirst !== undefined) {
+        candidateFirst ??= row;
+        inQuotes = scan.inQuotes;
+      } else {
+        candidateFirst = undefined;
+        inQuotes = false;
+      }
+      continue;
+    }
+    // Plain records between delimited records belong to a ragged block.
+    // Pending trailing records are included only through the caret above.
+    if (inQuotes || scan.hasDelimiter || scan.hasQuotedField || scan.inQuotes) last = row;
+    inQuotes = scan.inQuotes;
+  }
+  return new vscode.Range(line, 0, line, 0);
 }
 
 function localizeResultMessage(message: string): string {
@@ -139,16 +250,26 @@ async function convertDelimited(): Promise<void> {
   const editor = activeMarkdownEditor();
   if (!editor) return;
   const sourceRange = editor.selection.isEmpty ? delimitedBlock(editor.document, editor.selection.active.line) : new vscode.Range(editor.selection.start, editor.selection.end);
-  const result = fromDelimited(editor.document.getText(sourceRange));
+  const source = editor.document.getText(sourceRange);
+  const result = fromDelimited(source);
   if (!result.ok) {
     void vscode.window.showErrorMessage(vscode.l10n.t('Markdown Table Editor: {0}', localizeResultMessage(result.message)));
     return;
   }
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
-    await editor.edit((builder) => builder.replace(sourceRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
+    const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+    let end = source.length;
+    let trailingBreaks = 0;
+    while (end > 0 && (source[end - 1] === '\r' || source[end - 1] === '\n')) {
+      const last = source[--end];
+      if (last === '\n' && end > 0 && source[end - 1] === '\r') end -= 1;
+      trailingBreaks += 1;
+    }
+    const replacement = result.lines.join(eol) + eol.repeat(trailingBreaks);
+    await editor.edit((builder) => builder.replace(sourceRange, replacement));
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -161,11 +282,11 @@ async function insertTable(): Promise<void> {
   if (rowsText === undefined) return;
   const result = newTable(Number(columnsText), Number(rowsText));
   if (!result.ok) return;
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
     await editor.edit((builder) => builder.replace(editor.selection, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -189,31 +310,77 @@ async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<v
 }
 
 function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
-  if (internalEdit || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
+  if (internalEdits.has(event.document) || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
+  const historyChange = event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo;
   const configuration = vscode.workspace.getConfiguration('markdownTableEditor', event.document.uri);
   const power = configuration.get<boolean>('powerAutoFit', false);
-  if (!power && !configuration.get<boolean>('lightAutoAlign', true)) return;
+  if (!power && !configuration.get<boolean>('lightAutoAlign', true)) {
+    cancelAutomaticEdit(event.document);
+    return;
+  }
+  const autoRequest = autoRequests.get(event.document);
   const lines = documentLines(event.document);
   const rows = new Set<number>();
-  for (const change of event.contentChanges) {
-    const line = Math.min(change.range.start.line, lines.length - 1);
-    const range = findTableRange(lines, line);
-    if (range.found) rows.add(range.firstRow);
+  const ranges = findTableRanges(lines);
+  const changes = [...event.contentChanges].sort((left, right) => left.rangeOffset - right.rangeOffset);
+  let offsetDelta = 0;
+  for (const change of changes) {
+    // Change ranges use the old document; positions must use the updated offsets.
+    const startOffset = change.rangeOffset + offsetDelta;
+    offsetDelta += change.text.length - change.rangeLength;
+    const firstRow = event.document.positionAt(startOffset).line;
+    // Include surviving content when its original line was split or partly
+    // removed. A whole-line insertion/replacement leaves that next line alone.
+    const boundaryChanged = change.range.end.character > 0
+      || (change.text.length === 0 && change.range.start.character > 0);
+    const lastOffset = startOffset + Math.max(0, change.text.length - (boundaryChanged ? 0 : 1));
+    const lastRow = event.document.positionAt(lastOffset).line;
+    for (const range of ranges) {
+      // Removing complete lines before a table merely shifts it; removing a
+      // row inside a surviving table still requires formatting that table.
+      if (range.firstRow <= lastRow && range.lastRow >= firstRow
+        && (change.text.length > 0 || boundaryChanged || range.firstRow < firstRow)) rows.add(range.firstRow);
+    }
   }
+  const touchedRows = new Set(rows);
+  // History must not schedule fresh formatting or retain a request for a table
+  // it changed. Requests for other tables survive and follow shifted offsets.
+  if (historyChange) rows.clear();
+  if (autoRequest) {
+    for (const offset of autoRequest.rowOffsets) {
+      let mappedOffset = offset;
+      let delta = 0;
+      let deleted = false;
+      for (const change of changes) {
+        if (offset < change.rangeOffset) break;
+        // A removed header cannot transfer its request to the next table at
+        // the deletion boundary. New replacement tables are scheduled above.
+        if (change.rangeLength > 0 && offset < change.rangeOffset + change.rangeLength) {
+          deleted = true;
+          break;
+        }
+        delta += change.text.length - change.rangeLength;
+        mappedOffset = offset + delta;
+      }
+      if (deleted) continue;
+      const range = findTableRange(lines, event.document.positionAt(mappedOffset).line);
+      if (range.found && (!historyChange || !touchedRows.has(range.firstRow))) rows.add(range.firstRow);
+    }
+  }
+  cancelAutomaticEdit(event.document);
   if (rows.size === 0) return;
-  if (autoTimer) clearTimeout(autoTimer);
-  if (autoRequest?.document === event.document) {
-    for (const row of autoRequest.rows) rows.add(row);
-  }
-  autoRequest = { document: event.document, rows: [...rows], power };
-  autoTimer = setTimeout(async () => {
-    const request = autoRequest;
-    autoRequest = undefined;
-    autoTimer = undefined;
-    const editor = activeMarkdownEditor();
-    if (!request || !editor || editor.document !== request.document) return;
-    for (const row of request.rows.sort((left, right) => right - left)) {
-      const position = new vscode.Position(Math.min(row, editor.document.lineCount - 1), 0);
+  const request: AutomaticEdit = {
+    rowOffsets: [...rows].map((row) => event.document.offsetAt(new vscode.Position(row, 0))),
+    power,
+  };
+  autoRequests.set(event.document, request);
+  request.timer = setTimeout(async () => {
+    if (autoRequests.get(event.document) !== request) return;
+    autoRequests.delete(event.document);
+    const editor = vscode.window.visibleTextEditors.find((candidate) => candidate.document === event.document);
+    if (!editor || editor.document.languageId !== 'markdown') return;
+    for (const offset of request.rowOffsets.sort((left, right) => right - left)) {
+      const position = editor.document.positionAt(offset);
       if (request.power) await runFitAt(editor, position, true, true);
       else await runActionAt(editor, position, Action.ALIGN, true, true);
     }
@@ -243,12 +410,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdownTableEditor.toggleLightAutoAlign', () => toggleSetting('lightAutoAlign')),
     vscode.commands.registerCommand('markdownTableEditor.togglePowerAutoFit', () => toggleSetting('powerAutoFit')),
     vscode.workspace.onDidChangeTextDocument(scheduleAutomaticEdit),
+    vscode.workspace.onDidCloseTextDocument(cancelAutomaticEdit),
     createStatusBar('markdownTableEditor.toggleLightAutoAlign', `$(table) ${vscode.l10n.t('Light')}`, vscode.l10n.t('Toggle Markdown Table Editor light auto align'), 101),
     createStatusBar('markdownTableEditor.togglePowerAutoFit', `$(screen-full) ${vscode.l10n.t('Power')}`, vscode.l10n.t('Toggle Markdown Table Editor power auto fit'), 100),
   );
 }
 
 export function deactivate(): void {
-  if (autoTimer) clearTimeout(autoTimer);
-  autoRequest = undefined;
+  for (const document of autoRequests.keys()) cancelAutomaticEdit(document);
+  internalEdits.clear();
 }
