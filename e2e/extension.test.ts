@@ -230,6 +230,48 @@ suite('adapter regressions', () => {
     });
   });
 
+  test('CSV conversion includes a multiline quoted header from any physical line', async () => {
+    for (const caretLine of [0, 1, 2]) {
+      await withEditor('"First\nName",Age\nAnna,20\nFollowing paragraph', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| First Name | Age |', '| ---------- | --- |', '| Anna       | 20  |', 'Following paragraph',
+        ].join('\n'));
+      });
+    }
+  });
+
+  test('CSV conversion includes delimiter-free records between delimited records', async () => {
+    for (const caretLine of [1, 2, 3]) {
+      await withEditor('Introduction\nA,B\nsingle\nC,D\nFollowing paragraph', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          'Introduction', '| A      | B   |', '| ------ | --- |', '| single |     |', '| C      | D   |', 'Following paragraph',
+        ].join('\n'));
+      });
+    }
+  });
+
+  test('prose edits in another document preserve a pending automatic alignment', async () => {
+    const other = await vscode.workspace.openTextDocument({ language: 'markdown', content: 'Other prose' });
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      try {
+        assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 5), ' longer')), true);
+        const change = new vscode.WorkspaceEdit();
+        change.insert(other.uri, new vscode.Position(0, 0), 'More ');
+        assert.equal(await vscode.workspace.applyEdit(change), true);
+        await waitUntil(() => target.document.lineAt(2).text === '| one longer | x   |');
+        assert.equal(other.getText(), 'More Other prose');
+      } finally {
+        await vscode.window.showTextDocument(other);
+        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+        await vscode.window.showTextDocument(target.document);
+      }
+    });
+  });
+
   test('automatic alignment does not reapply a manually aligned table after undo', async () => {
     const original = '| A | B |\n| --- | --- |\n| longer | x |';
     await withEditor(original, async (target) => {

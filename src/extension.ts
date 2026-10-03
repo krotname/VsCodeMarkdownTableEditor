@@ -145,29 +145,41 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
 
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
   let first: number | undefined;
+  let candidateFirst: number | undefined;
+  let last = -1;
   let inQuotes = false;
   let delimiter: string | undefined;
   for (let row = 0; row <= document.lineCount; row += 1) {
-    const scan: DelimitedLineScan = row < document.lineCount
-      ? scanDelimitedLine(document.lineAt(row).text, inQuotes, delimiter)
-      : { hasDelimiter: false, inQuotes: false, delimiter };
+    if (row === document.lineCount || (!inQuotes && document.lineAt(row).text.trim() === '')) {
+      if (first !== undefined && line >= first && line <= last) {
+        return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
+      }
+      first = undefined;
+      candidateFirst = undefined;
+      inQuotes = false;
+      delimiter = undefined;
+      continue;
+    }
+    const scan = scanDelimitedLine(document.lineAt(row).text, inQuotes, delimiter);
     if (first === undefined) {
       if (scan.hasDelimiter) {
-        first = row;
+        first = candidateFirst ?? row;
+        last = row;
         inQuotes = scan.inQuotes;
         delimiter = scan.delimiter;
+      } else if (scan.inQuotes) {
+        candidateFirst ??= row;
+        inQuotes = true;
+      } else {
+        candidateFirst = undefined;
+        inQuotes = false;
       }
       continue;
     }
-    if (row < document.lineCount && (inQuotes || scan.hasDelimiter)) {
-      inQuotes = scan.inQuotes;
-      continue;
-    }
-    const last = row - 1;
-    if (line >= first && line <= last) return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
-    first = undefined;
-    inQuotes = false;
-    delimiter = undefined;
+    // Plain records between delimited records belong to a ragged block;
+    // trailing prose is excluded because it does not advance the last record.
+    if (inQuotes || scan.hasDelimiter || scan.inQuotes) last = row;
+    inQuotes = scan.inQuotes;
   }
   return new vscode.Range(line, 0, line, 0);
 }
@@ -195,8 +207,14 @@ async function convertDelimited(): Promise<void> {
   internalEdit = true;
   try {
     const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-    const suffix = source.match(/(?:\r\n|\r|\n)+$/u)?.[0] ?? '';
-    const replacement = result.lines.join(eol) + suffix.replace(/\r\n|\r|\n/gu, eol);
+    let end = source.length;
+    let trailingBreaks = 0;
+    while (end > 0 && (source[end - 1] === '\r' || source[end - 1] === '\n')) {
+      const last = source[--end];
+      if (last === '\n' && end > 0 && source[end - 1] === '\r') end -= 1;
+      trailingBreaks += 1;
+    }
+    const replacement = result.lines.join(eol) + eol.repeat(trailingBreaks);
     await editor.edit((builder) => builder.replace(sourceRange, replacement));
   } finally {
     internalEdit = false;
@@ -284,6 +302,7 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
       if (range.found) rows.add(range.firstRow);
     }
   }
+  if (rows.size === 0 && autoRequest?.document !== event.document) return;
   if (autoTimer) clearTimeout(autoTimer);
   autoTimer = undefined;
   autoRequest = undefined;
