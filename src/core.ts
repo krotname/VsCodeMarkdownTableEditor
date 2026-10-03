@@ -1878,7 +1878,7 @@ function detectDelimiter(text: string): ',' | '\t' {
 }
 
 function parseDelimited(text: string): string[][] {
-  const value = trim(text);
+  const value = text;
   if (value.length === 0) return [];
   if (!hasDelimiterOutsideQuotes(value)) return [];
 
