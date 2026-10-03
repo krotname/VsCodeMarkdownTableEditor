@@ -151,8 +151,11 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
   let delimiter: string | undefined;
   for (let row = 0; row <= document.lineCount; row += 1) {
     if (row === document.lineCount || (!inQuotes && document.lineAt(row).text.trim() === '')) {
-      if (first !== undefined && line >= first && line <= last) {
-        return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
+      if (first !== undefined && line >= first && line < row) {
+        // The caret explicitly includes pending one-field records; otherwise
+        // stop at the last unambiguous CSV/TSV record before adjacent prose.
+        const end = Math.max(last, line);
+        return new vscode.Range(first, 0, end, document.lineAt(end).text.length);
       }
       first = undefined;
       candidateFirst = undefined;
@@ -176,8 +179,8 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
       }
       continue;
     }
-    // Plain records between delimited records belong to a ragged block;
-    // trailing prose is excluded because it does not advance the last record.
+    // Plain records between delimited records belong to a ragged block.
+    // Pending trailing records are included only through the caret above.
     if (inQuotes || scan.hasDelimiter || scan.inQuotes) last = row;
     inQuotes = scan.inQuotes;
   }
@@ -279,7 +282,10 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
     // Change ranges use the old document; positions must use the updated offsets.
     const startOffset = change.rangeOffset + offsetDelta;
     const firstRow = event.document.positionAt(startOffset).line;
-    const lastRow = event.document.positionAt(startOffset + change.text.length).line;
+    // The inserted span is end-exclusive. A final newline does not edit the
+    // next line, while a deletion still affects the boundary at its start.
+    const lastOffset = startOffset + Math.max(0, change.text.length - 1);
+    const lastRow = event.document.positionAt(lastOffset).line;
     for (const range of ranges) {
       if (range.firstRow <= lastRow && range.lastRow >= firstRow) rows.add(range.firstRow);
     }

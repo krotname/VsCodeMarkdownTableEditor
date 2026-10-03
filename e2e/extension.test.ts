@@ -272,6 +272,30 @@ suite('adapter regressions', () => {
     });
   });
 
+  test('CSV conversion includes trailing one-field records through the caret', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['Introduction', 'A,B', 'C,D', 'single', 'last', 'Following paragraph'].join(eol), async (target) => {
+        target.selection = new vscode.Selection(4, 1, 4, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          'Introduction', '| A      | B   |', '| ------ | --- |', '| C      | D   |',
+          '| single |     |', '| last   |     |', 'Following paragraph',
+        ].join(eol));
+      });
+    }
+  });
+
+  test('inserting prose before a table leaves its formatting unchanged', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      const original = ['| A | B |', '| --- | --- |', '| longer | x |'].join(eol);
+      await withEditor(original, async (target) => {
+        assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(0, 0), `Heading${eol}`)), true);
+        await delay();
+        assert.equal(target.document.getText(), `Heading${eol}${original}`);
+      });
+    }
+  });
+
   test('automatic alignment does not reapply a manually aligned table after undo', async () => {
     const original = '| A | B |\n| --- | --- |\n| longer | x |';
     await withEditor(original, async (target) => {
