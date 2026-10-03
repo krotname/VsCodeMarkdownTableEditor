@@ -285,6 +285,44 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('a background table edit preserves another document pending alignment', async () => {
+    const other = await vscode.workspace.openTextDocument({ language: 'markdown', content: '| C | D |\n| --- | --- |\n| two | y |' });
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      try {
+        const change = new vscode.WorkspaceEdit();
+        change.insert(target.document.uri, new vscode.Position(2, 5), ' longer');
+        change.insert(other.uri, new vscode.Position(2, 5), ' wider');
+        assert.equal(await vscode.workspace.applyEdit(change), true);
+        await waitUntil(() => target.document.lineAt(2).text === '| one longer | x   |');
+      } finally {
+        await vscode.window.showTextDocument(other);
+        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+        await vscode.window.showTextDocument(target.document);
+      }
+    });
+  });
+
+  test('automatic alignment handles two visible documents independently', async () => {
+    const other = await vscode.workspace.openTextDocument({ language: 'markdown', content: '| C | D |\n| --- | --- |\n| two | y |' });
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      const column = target.viewColumn ?? vscode.ViewColumn.One;
+      const otherEditor = await vscode.window.showTextDocument(other, {
+        viewColumn: vscode.ViewColumn.Beside, preserveFocus: true, preview: false,
+      });
+      try {
+        const change = new vscode.WorkspaceEdit();
+        change.insert(target.document.uri, new vscode.Position(2, 5), ' longer');
+        change.insert(other.uri, new vscode.Position(2, 5), ' wider');
+        assert.equal(await vscode.workspace.applyEdit(change), true);
+        await waitUntil(() => target.document.lineAt(2).text === '| one longer | x   |' && other.lineAt(2).text === '| two wider | y   |');
+      } finally {
+        await vscode.window.showTextDocument(other, { viewColumn: otherEditor.viewColumn ?? vscode.ViewColumn.Two });
+        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+        await vscode.window.showTextDocument(target.document, { viewColumn: column });
+      }
+    });
+  });
+
   test('TSV conversion at the caret retains fully empty records', async () => {
     await withEditor('\t\t', async (target) => {
       target.selection = new vscode.Selection(0, 1, 0, 1);

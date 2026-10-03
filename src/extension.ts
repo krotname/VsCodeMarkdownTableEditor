@@ -32,9 +32,25 @@ const commandActions: Record<string, Action> = {
   'markdownTableEditor.sortDescending': Action.SORT_DESCENDING,
 };
 
-let internalEdit = false;
-let autoTimer: NodeJS.Timeout | undefined;
-let autoRequest: { document: vscode.TextDocument; rowOffsets: number[]; power: boolean } | undefined;
+type AutomaticEdit = { rowOffsets: number[]; power: boolean; timer?: NodeJS.Timeout };
+const internalEdits = new Map<vscode.TextDocument, number>();
+const autoRequests = new Map<vscode.TextDocument, AutomaticEdit>();
+
+function beginInternalEdit(document: vscode.TextDocument): void {
+  internalEdits.set(document, (internalEdits.get(document) ?? 0) + 1);
+}
+
+function endInternalEdit(document: vscode.TextDocument): void {
+  const remaining = (internalEdits.get(document) ?? 1) - 1;
+  if (remaining > 0) internalEdits.set(document, remaining);
+  else internalEdits.delete(document);
+}
+
+function cancelAutomaticEdit(document: vscode.TextDocument): void {
+  const request = autoRequests.get(document);
+  if (request?.timer) clearTimeout(request.timer);
+  autoRequests.delete(document);
+}
 
 function documentLines(document: vscode.TextDocument): string[] {
   return Array.from({ length: document.lineCount }, (_, line) => document.lineAt(line).text);
@@ -55,7 +71,7 @@ async function replaceTable(
   if (!result.ok) return false;
   const endLine = editor.document.lineAt(range.lastRow);
   const editRange = new vscode.Range(range.firstRow, 0, range.lastRow, endLine.text.length);
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
     if (result.changed) {
       const applied = await editor.edit((builder) => builder.replace(editRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
@@ -70,7 +86,7 @@ async function replaceTable(
     }
     return true;
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -212,7 +228,7 @@ async function convertDelimited(): Promise<void> {
     void vscode.window.showErrorMessage(vscode.l10n.t('Markdown Table Editor: {0}', localizeResultMessage(result.message)));
     return;
   }
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
     const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
     let end = source.length;
@@ -225,7 +241,7 @@ async function convertDelimited(): Promise<void> {
     const replacement = result.lines.join(eol) + eol.repeat(trailingBreaks);
     await editor.edit((builder) => builder.replace(sourceRange, replacement));
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -238,11 +254,11 @@ async function insertTable(): Promise<void> {
   if (rowsText === undefined) return;
   const result = newTable(Number(columnsText), Number(rowsText));
   if (!result.ok) return;
-  internalEdit = true;
+  beginInternalEdit(editor.document);
   try {
     await editor.edit((builder) => builder.replace(editor.selection, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
   } finally {
-    internalEdit = false;
+    endInternalEdit(editor.document);
   }
 }
 
@@ -266,18 +282,18 @@ async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<v
 }
 
 function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
-  if (internalEdit || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
+  if (internalEdits.has(event.document) || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
   if (event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo) {
-    if (autoRequest?.document === event.document) {
-      if (autoTimer) clearTimeout(autoTimer);
-      autoTimer = undefined;
-      autoRequest = undefined;
-    }
+    cancelAutomaticEdit(event.document);
     return;
   }
   const configuration = vscode.workspace.getConfiguration('markdownTableEditor', event.document.uri);
   const power = configuration.get<boolean>('powerAutoFit', false);
-  if (!power && !configuration.get<boolean>('lightAutoAlign', true)) return;
+  if (!power && !configuration.get<boolean>('lightAutoAlign', true)) {
+    cancelAutomaticEdit(event.document);
+    return;
+  }
+  const autoRequest = autoRequests.get(event.document);
   const lines = documentLines(event.document);
   const rows = new Set<number>();
   const ranges = findTableRanges(lines);
@@ -296,7 +312,7 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
     }
     offsetDelta += change.text.length - change.rangeLength;
   }
-  if (autoRequest?.document === event.document) {
+  if (autoRequest) {
     for (const offset of autoRequest.rowOffsets) {
       let mappedOffset = offset;
       let delta = 0;
@@ -313,22 +329,18 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
       if (range.found) rows.add(range.firstRow);
     }
   }
-  if (rows.size === 0 && autoRequest?.document !== event.document) return;
-  if (autoTimer) clearTimeout(autoTimer);
-  autoTimer = undefined;
-  autoRequest = undefined;
+  cancelAutomaticEdit(event.document);
   if (rows.size === 0) return;
-  autoRequest = {
-    document: event.document,
+  const request: AutomaticEdit = {
     rowOffsets: [...rows].map((row) => event.document.offsetAt(new vscode.Position(row, 0))),
     power,
   };
-  autoTimer = setTimeout(async () => {
-    const request = autoRequest;
-    autoRequest = undefined;
-    autoTimer = undefined;
-    const editor = activeMarkdownEditor();
-    if (!request || !editor || editor.document !== request.document) return;
+  autoRequests.set(event.document, request);
+  request.timer = setTimeout(async () => {
+    if (autoRequests.get(event.document) !== request) return;
+    autoRequests.delete(event.document);
+    const editor = vscode.window.visibleTextEditors.find((candidate) => candidate.document === event.document);
+    if (!editor || editor.document.languageId !== 'markdown') return;
     for (const offset of request.rowOffsets.sort((left, right) => right - left)) {
       const position = editor.document.positionAt(offset);
       if (request.power) await runFitAt(editor, position, true, true);
@@ -360,12 +372,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdownTableEditor.toggleLightAutoAlign', () => toggleSetting('lightAutoAlign')),
     vscode.commands.registerCommand('markdownTableEditor.togglePowerAutoFit', () => toggleSetting('powerAutoFit')),
     vscode.workspace.onDidChangeTextDocument(scheduleAutomaticEdit),
+    vscode.workspace.onDidCloseTextDocument(cancelAutomaticEdit),
     createStatusBar('markdownTableEditor.toggleLightAutoAlign', `$(table) ${vscode.l10n.t('Light')}`, vscode.l10n.t('Toggle Markdown Table Editor light auto align'), 101),
     createStatusBar('markdownTableEditor.togglePowerAutoFit', `$(screen-full) ${vscode.l10n.t('Power')}`, vscode.l10n.t('Toggle Markdown Table Editor power auto fit'), 100),
   );
 }
 
 export function deactivate(): void {
-  if (autoTimer) clearTimeout(autoTimer);
-  autoRequest = undefined;
+  for (const document of autoRequests.keys()) cancelAutomaticEdit(document);
+  internalEdits.clear();
 }
