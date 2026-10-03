@@ -12,6 +12,7 @@ import {
   isPotentialSeparatorLine,
   isPotentialTableLine,
   newTable,
+  splitCells,
 } from '../src/core.js';
 
 const table = ['before', '| A | B |', '| --- | ---: |', '| x | 2 |', '| y | 1 |', 'after'];
@@ -59,6 +60,20 @@ test('new table and delimited conversion validate inputs', () => {
   assert.equal(newTable(3, 2).lines.length, 4);
   assert.equal(newTable(0, 2).ok, false);
   assert.equal(fromDelimited('no delimiter').ok, false);
+});
+
+test('TSV conversion preserves empty edge columns and explicitly empty final records', () => {
+  for (const { source, cells } of [
+    { source: '\tB\nx\ty', cells: [['', 'B'], ['x', 'y']] },
+    { source: 'A\tB\t', cells: [['A', 'B', '']] },
+    { source: 'A\tB\n\t', cells: [['A', 'B'], ['', '']] },
+    { source: '\t\t', cells: [['', '', '']] },
+  ]) {
+    const result = fromDelimited(source);
+    assert.equal(result.ok, true, JSON.stringify(source));
+    assert.deepEqual(result.lines.filter((_, row) => row !== 1).map(splitCells), cells, JSON.stringify(source));
+    assert.equal(findTableRange(result.lines, 0).found, true);
+  }
 });
 
 test('large table alignment remains linear enough for editor use', () => {
