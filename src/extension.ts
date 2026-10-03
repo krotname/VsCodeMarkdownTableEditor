@@ -302,15 +302,20 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
   for (const change of changes) {
     // Change ranges use the old document; positions must use the updated offsets.
     const startOffset = change.rangeOffset + offsetDelta;
+    offsetDelta += change.text.length - change.rangeLength;
     const firstRow = event.document.positionAt(startOffset).line;
-    // The inserted span is end-exclusive. A final newline does not edit the
-    // next line, while a deletion still affects the boundary at its start.
-    const lastOffset = startOffset + Math.max(0, change.text.length - 1);
+    // Include surviving content when its original line was split or partly
+    // removed. A whole-line insertion/replacement leaves that next line alone.
+    const boundaryChanged = change.range.end.character > 0
+      || (change.text.length === 0 && change.range.start.character > 0);
+    const lastOffset = startOffset + Math.max(0, change.text.length - (boundaryChanged ? 0 : 1));
     const lastRow = event.document.positionAt(lastOffset).line;
     for (const range of ranges) {
-      if (range.firstRow <= lastRow && range.lastRow >= firstRow) rows.add(range.firstRow);
+      // Removing complete lines before a table merely shifts it; removing a
+      // row inside a surviving table still requires formatting that table.
+      if (range.firstRow <= lastRow && range.lastRow >= firstRow
+        && (change.text.length > 0 || boundaryChanged || range.firstRow < firstRow)) rows.add(range.firstRow);
     }
-    offsetDelta += change.text.length - change.rangeLength;
   }
   if (autoRequest) {
     for (const offset of autoRequest.rowOffsets) {

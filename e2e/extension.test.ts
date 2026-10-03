@@ -379,6 +379,54 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('newline-ending replacements format a surviving modified table header', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['Intro', '| A | B |', '| --- | --- |', '| longer | x |'].join(eol), async (target) => {
+        assert.equal(await target.edit((builder) => builder.replace(new vscode.Range(0, 0, 1, 1), `Heading${eol}`)), true);
+        await waitUntil(() => target.document.lineAt(1).text === '| A      | B   |');
+        assert.equal(target.document.getText(), [
+          'Heading', '| A      | B   |', '| ------ | --- |', '| longer | x   |',
+        ].join(eol));
+      });
+    }
+  });
+
+  test('whole-line prose replacements and deletions leave the following table unchanged', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      const table = ['| A | B |', '| --- | --- |', '| longer | x |'].join(eol);
+      await withEditor(`Intro${eol}${table}`, async (target) => {
+        assert.equal(await target.edit((builder) => builder.replace(new vscode.Range(0, 0, 1, 0), `Heading${eol}`)), true);
+        await delay();
+        assert.equal(target.document.getText(), `Heading${eol}${table}`);
+        assert.equal(await target.edit((builder) => builder.delete(new vscode.Range(0, 0, 1, 0))), true);
+        await delay();
+        assert.equal(target.document.getText(), table);
+      });
+    }
+  });
+
+  test('inserting a newline inside a header formats its surviving table', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['| A | B |', '| --- | --- |', '| longer | x |'].join(eol), async (target) => {
+        assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(0, 1), eol)), true);
+        await waitUntil(() => target.document.lineAt(1).text === '| A      | B   |');
+        assert.equal(target.document.getText(), [
+          '|', '| A      | B   |', '| ------ | --- |', '| longer | x   |',
+        ].join(eol));
+      });
+    }
+  });
+
+  test('deleting a whole data row still realigns the surviving table', async () => {
+    await withEditor([
+      '| A        | B   |', '| -------- | --- |', '| verylong | x   |', '| one      | y   |',
+    ].join('\n'), async (target) => {
+      assert.equal(await target.edit((builder) => builder.delete(new vscode.Range(2, 0, 3, 0))), true);
+      await waitUntil(() => target.document.lineAt(0).text === '| A   | B   |');
+      assert.equal(target.document.getText(), ['| A   | B   |', '| --- | --- |', '| one | y   |'].join('\n'));
+    });
+  });
+
   test('automatic alignment does not reapply a manually aligned table after undo', async () => {
     const original = '| A | B |\n| --- | --- |\n| longer | x |';
     await withEditor(original, async (target) => {
