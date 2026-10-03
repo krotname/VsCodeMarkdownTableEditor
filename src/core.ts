@@ -1860,7 +1860,6 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
 function detectDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
   let commas = 0;
-  let firstDelimitedRecord = true;
   let inQuotes = false;
   let cellBlank = true;
   for (let index = 0; index < text.length; index += 1) {
@@ -1876,17 +1875,28 @@ function detectDelimiter(text: string): ',' | '\t' {
       commas += 1;
       cellBlank = true;
     } else if (character === '\r' || character === '\n') {
-      if (firstDelimitedRecord && tabs > 0) return '\t';
-      if (firstDelimitedRecord && commas > 0) {
-        // A comma-only header can be a single TSV cell. Check the body.
-        firstDelimitedRecord = false;
-        commas = 0;
-      }
+      if (tabs > 0 || commas > 0) break;
       cellBlank = true;
     }
     else if (!isSpace(character)) cellBlank = false;
   }
-  return tabs > 0 && (firstDelimitedRecord || commas === 0) ? '\t' : ',';
+  if (tabs > 0) return '\t';
+  if (!text.includes('\t')) return ',';
+
+  // Compare logical body records using each delimiter's quote grammar.
+  // A populated tab-separated field is stronger evidence than tab padding;
+  // punctuation commas in occasional TSV cells need not imply CSV.
+  const csv = parseDelimitedRows(text, ',');
+  const tsv = parseDelimitedRows(text, '\t');
+  let csvRecords = 0;
+  let tsvRecords = 0;
+  for (let row = 1; row < csv.length; row += 1) {
+    if (csv[row]!.length > 1) csvRecords += 1;
+  }
+  for (let row = 1; row < tsv.length; row += 1) {
+    if (tsv[row]!.slice(1).some((cell) => !isBlankText(cell))) tsvRecords += 1;
+  }
+  return tsvRecords > csvRecords ? '\t' : ',';
 }
 
 function parseDelimited(text: string): string[][] {
@@ -1895,7 +1905,10 @@ function parseDelimited(text: string): string[][] {
   if (value.length === 0) return [];
   if (!hasDelimiterOutsideQuotes(value)) return [];
 
-  const delimiter = detectDelimiter(value);
+  return parseDelimitedRows(value, detectDelimiter(value));
+}
+
+function parseDelimitedRows(value: string, delimiter: ',' | '\t'): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';

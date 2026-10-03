@@ -134,10 +134,11 @@ async function runFit(silent = false): Promise<boolean> {
   return runFitAt(editor, editor.selection.active, silent);
 }
 
-type DelimitedLineScan = { hasDelimiter: boolean; inQuotes: boolean; delimiter: string | undefined };
+type DelimitedLineScan = { hasDelimiter: boolean; hasQuotedField: boolean; inQuotes: boolean; delimiter: string | undefined };
 
 function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: string): DelimitedLineScan {
   let inQuotes = startsInQuotes;
+  let hasQuotedField = startsInQuotes;
   let cellBlank = !startsInQuotes;
   let commas = 0;
   let tabs = 0;
@@ -148,6 +149,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
       if (character === '"' && text[index + 1] === '"') index += 1;
       else if (character === '"') inQuotes = false;
     } else if (character === '"' && cellBlank) {
+      hasQuotedField = true;
       inQuotes = true;
     } else if (character === delimiter || (delimiter === undefined && (character === ',' || character === '\t'))) {
       if (character === '\t') tabs += 1;
@@ -160,7 +162,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
       cellBlank = false;
     }
   }
-  return { hasDelimiter: tabs + commas > 0 || alternateTabs, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
+  return { hasDelimiter: tabs + commas > 0 || alternateTabs, hasQuotedField, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
 }
 
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
@@ -195,9 +197,9 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
         last = row;
         inQuotes = scan.inQuotes;
         delimiter = scan.delimiter;
-      } else if (scan.inQuotes) {
+      } else if (scan.inQuotes || scan.hasQuotedField || candidateFirst !== undefined) {
         candidateFirst ??= row;
-        inQuotes = true;
+        inQuotes = scan.inQuotes;
       } else {
         candidateFirst = undefined;
         inQuotes = false;
@@ -287,10 +289,7 @@ async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<v
 
 function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
   if (internalEdits.has(event.document) || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
-  if (event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo) {
-    cancelAutomaticEdit(event.document);
-    return;
-  }
+  const historyChange = event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo;
   const configuration = vscode.workspace.getConfiguration('markdownTableEditor', event.document.uri);
   const power = configuration.get<boolean>('powerAutoFit', false);
   if (!power && !configuration.get<boolean>('lightAutoAlign', true)) {
@@ -321,6 +320,10 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
         && (change.text.length > 0 || boundaryChanged || range.firstRow < firstRow)) rows.add(range.firstRow);
     }
   }
+  const touchedRows = new Set(rows);
+  // History must not schedule fresh formatting or retain a request for a table
+  // it changed. Requests for other tables survive and follow shifted offsets.
+  if (historyChange) rows.clear();
   if (autoRequest) {
     for (const offset of autoRequest.rowOffsets) {
       let mappedOffset = offset;
@@ -335,7 +338,7 @@ function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
         mappedOffset = offset + delta;
       }
       const range = findTableRange(lines, event.document.positionAt(mappedOffset).line);
-      if (range.found) rows.add(range.firstRow);
+      if (range.found && (!historyChange || !touchedRows.has(range.firstRow))) rows.add(range.firstRow);
     }
   }
   cancelAutomaticEdit(event.document);

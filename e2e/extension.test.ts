@@ -242,6 +242,20 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('CSV conversion retains a closed quoted one-field header', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1, 2]) {
+        await withEditor(['"Title"', 'A,B', 'C,D', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Title |     |', '| ----- | --- |', '| A     | B   |', '| C     | D   |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
   test('CSV conversion includes delimiter-free records between delimited records', async () => {
     for (const caretLine of [1, 2, 3]) {
       await withEditor('Introduction\nA,B\nsingle\nC,D\nFollowing paragraph', async (target) => {
@@ -334,6 +348,18 @@ suite('adapter regressions', () => {
           ].join(eol));
         });
       }
+    }
+  });
+
+  test('ragged CSV conversion keeps trailing tabs as padding', async () => {
+    for (const caretLine of [0, 1, 2]) {
+      await withEditor('Name,Note\nAnna\t\nBob\t\nFollowing paragraph', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| Name | Note |', '| ---- | ---- |', '| Anna |      |', '| Bob  |      |', 'Following paragraph',
+        ].join('\n'));
+      });
     }
   });
 
@@ -462,6 +488,22 @@ suite('adapter regressions', () => {
       await delay();
       assert.equal(target.document.getText(), original);
     });
+  });
+
+  test('undoing unrelated prose preserves and remaps pending table alignment', async () => {
+    for (const placement of ['before', 'after']) {
+      await withEditor('Intro\n| A | B |\n| --- | --- |\n| one | x |\n\nNotes', async (target) => {
+        assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(3, 5), ' longer')), true);
+        assert.equal(await target.edit((builder) => {
+          if (placement === 'before') builder.insert(new vscode.Position(0, 0), 'Added\n');
+          else builder.insert(new vscode.Position(5, 5), ' changed');
+        }), true);
+        await executeHistoryCommand('undo', target.document);
+        assert.equal(target.document.lineAt(0).text, 'Intro');
+        assert.equal(target.document.lineAt(5).text, 'Notes');
+        await waitUntil(() => target.document.lineAt(3).text === '| one longer | x   |');
+      });
+    }
   });
 
   test('undo cancels an automatic alignment that is still waiting for its debounce', async () => {
