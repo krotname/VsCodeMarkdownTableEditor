@@ -407,6 +407,18 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('literal quotes after a tab in a CSV field do not consume following prose', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['Name,Note', 'x,foo\t"literal', '', 'Following paragraph'].join(eol), async (target) => {
+        target.selection = new vscode.Selection(0, 1, 0, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| Name | Note         |', '| ---- | ------------ |', '| x    | foo\t"literal |', '', 'Following paragraph',
+        ].join(eol));
+      });
+    }
+  });
+
   test('ragged CSV conversion keeps trailing tabs as padding', async () => {
     for (const caretLine of [0, 1, 2]) {
       await withEditor('Name,Note\nAnna\t\nBob\t\nFollowing paragraph', async (target) => {
@@ -416,6 +428,20 @@ suite('adapter regressions', () => {
           '| Name | Note |', '| ---- | ---- |', '| Anna |      |', '| Bob  |      |', 'Following paragraph',
         ].join('\n'));
       });
+    }
+  });
+
+  test('quoted tabs in a later row preserve established TSV at every caret line', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1, 2, 3]) {
+        await withEditor(['Title, notes', 'A\tfoo', 'B\tbar', '\t"x\ty"', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 0, caretLine, 0);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Title, notes |     |', '| ------------ | --- |', '| A            | foo |', '| B            | bar |', '|              | x\ty |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
     }
   });
 

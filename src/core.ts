@@ -1837,8 +1837,11 @@ function isBlankText(value: string): boolean {
   return true;
 }
 
-function addDelimitedRow(rows: string[][], row: string[], hasDelimitedSyntax: boolean): void {
-  if (row.some(cellHasText) || hasDelimitedSyntax) rows.push(row);
+function addDelimitedRow(rows: string[][], row: string[], hasDelimitedSyntax: boolean, recordStarts?: number[], recordStart = 0): void {
+  if (row.some(cellHasText) || hasDelimitedSyntax) {
+    rows.push(row);
+    recordStarts?.push(recordStart);
+  }
 }
 
 function hasDelimiterOutsideQuotes(text: string): boolean {
@@ -1857,17 +1860,16 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
   return false;
 }
 
-function detectDelimiter(text: string): ',' | '\t' {
+/** Uses the same delimiter inference as fromDelimited for editor boundaries. */
+export function detectDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
   let commas = 0;
   let firstDelimitedRecord = true;
-  let quotedTabs = false;
   let inQuotes = false;
   let cellBlank = true;
   for (let index = 0; index < text.length; index += 1) {
     const character = at(text, index);
     if (inQuotes) {
-      if (character === '\t') quotedTabs = true;
       if (character === '"' && at(text, index + 1) === '"') index += 1;
       else if (character === '"') inQuotes = false;
     } else if (character === '"' && cellBlank) inQuotes = true;
@@ -1890,10 +1892,10 @@ function detectDelimiter(text: string): ',' | '\t' {
   // Compare logical body records using each delimiter's quote grammar.
   // A populated tab-separated field is stronger evidence than tab padding;
   // punctuation commas in occasional TSV cells need not imply CSV.
-  const csv = parseDelimitedRows(text, ',');
-  const tsv = parseDelimitedRows(text, '\t');
-  // Continuations of a valid quoted CSV field are not TSV records.
-  if (csv.length > 0 && quotedTabs) return ',';
+  const csvStarts: number[] = [];
+  const tsvStarts: number[] = [];
+  const csv = parseDelimitedRows(text, ',', csvStarts);
+  const tsv = parseDelimitedRows(text, '\t', tsvStarts);
   let csvRecords = 0;
   let leadingTabs = 0;
   let tsvRecords = 0;
@@ -1903,7 +1905,12 @@ function detectDelimiter(text: string): ',' | '\t' {
       if (trim(csv[row]![0]!).includes('\t')) leadingTabs += 1;
     }
   }
+  let csvStartIndex = 0;
   for (let row = 1; row < tsv.length; row += 1) {
+    // A physical continuation inside a CSV field is not another TSV record.
+    // The opening record still supplies TSV evidence for an empty first field.
+    while (csvStartIndex < csvStarts.length && csvStarts[csvStartIndex]! < tsvStarts[row]!) csvStartIndex += 1;
+    if (csv.length > 0 && csvStarts[csvStartIndex] !== tsvStarts[row]) continue;
     if (tsv[row]!.slice(1).some((cell) => !isBlankText(cell))) tsvRecords += 1;
   }
   return tsvRecords > csvRecords || (tsvRecords > 0 && tsvRecords === csvRecords && leadingTabs === csvRecords) ? '\t' : ',';
@@ -1918,13 +1925,14 @@ function parseDelimited(text: string): string[][] {
   return parseDelimitedRows(value, detectDelimiter(value));
 }
 
-function parseDelimitedRows(value: string, delimiter: ',' | '\t'): string[][] {
+function parseDelimitedRows(value: string, delimiter: ',' | '\t', recordStarts?: number[]): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
   let inQuotes = false;
   let closedQuotedField = false;
   let rowHasDelimitedSyntax = false;
+  let recordStart = 0;
 
   for (let index = 0; index < value.length; index += 1) {
     const character = at(value, index);
@@ -1952,12 +1960,13 @@ function parseDelimitedRows(value: string, delimiter: ',' | '\t'): string[][] {
         rowHasDelimitedSyntax = true;
       } else if (character === '\r' || character === '\n') {
         row.push(cell);
-        addDelimitedRow(rows, row, rowHasDelimitedSyntax);
+        addDelimitedRow(rows, row, rowHasDelimitedSyntax, recordStarts, recordStart);
         row = [];
         cell = '';
         closedQuotedField = false;
         rowHasDelimitedSyntax = false;
         if (character === '\r' && at(value, index + 1) === '\n') index += 1;
+        recordStart = index + 1;
       } else if (isSpace(character)) cell += character;
       else return [];
     } else if (character === '"' && isBlankText(cell)) {
@@ -1970,18 +1979,19 @@ function parseDelimitedRows(value: string, delimiter: ',' | '\t'): string[][] {
       rowHasDelimitedSyntax = true;
     } else if (character === '\r' || character === '\n') {
       row.push(cell);
-      addDelimitedRow(rows, row, rowHasDelimitedSyntax);
+      addDelimitedRow(rows, row, rowHasDelimitedSyntax, recordStarts, recordStart);
       row = [];
       cell = '';
       rowHasDelimitedSyntax = false;
       if (character === '\r' && at(value, index + 1) === '\n') index += 1;
+      recordStart = index + 1;
     } else cell += character;
   }
 
   if (inQuotes) return [];
 
   row.push(cell);
-  addDelimitedRow(rows, row, rowHasDelimitedSyntax);
+  addDelimitedRow(rows, row, rowHasDelimitedSyntax, recordStarts, recordStart);
   return rows;
 }
 

@@ -6,6 +6,7 @@ import {
   apply,
   applyWrappedToWidth,
   columnFromCursor,
+  detectDelimiter,
   findTableRange,
   findTableRanges,
   fromDelimited,
@@ -136,7 +137,7 @@ async function runFit(silent = false): Promise<boolean> {
 
 type DelimitedLineScan = { hasDelimiter: boolean; hasQuotedField: boolean; inQuotes: boolean; delimiter: string | undefined };
 
-function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: string): DelimitedLineScan {
+function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: string, alternateQuotes = true): DelimitedLineScan {
   let inQuotes = startsInQuotes;
   let hasQuotedField = startsInQuotes;
   let cellBlank = !startsInQuotes;
@@ -158,7 +159,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
     } else if (character === '\t' && delimiter === ',') {
       // Keep possible TSV body records until the core can infer the delimiter.
       alternateTabs = true;
-      cellBlank = true;
+      if (alternateQuotes) cellBlank = true;
     } else if (character.trim() !== '') {
       cellBlank = false;
     }
@@ -166,7 +167,7 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
   return { hasDelimiter: tabs + commas > 0 || alternateTabs, hasQuotedField, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
 }
 
-function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
+function delimitedBlock(document: vscode.TextDocument, line: number, alternateQuotes = true): vscode.Range {
   let first: number | undefined;
   let candidateFirst: number | undefined;
   let caretFirst: number | undefined;
@@ -181,7 +182,13 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
         // The caret explicitly includes pending one-field records; otherwise
         // stop at the last unambiguous CSV/TSV record before adjacent prose.
         const end = Math.max(last, line);
-        return new vscode.Range(first, 0, end, document.lineAt(end).text.length);
+        const range = new vscode.Range(first, 0, end, document.lineAt(end).text.length);
+        // Tabs establish quote boundaries only when the whole candidate is TSV.
+        // A CSV field can contain a literal tab followed by a literal quote.
+        if (alternateQuotes && detectDelimiter(document.getText(range)) === ',') {
+          return delimitedBlock(document, line, false);
+        }
+        return range;
       }
       first = undefined;
       candidateFirst = undefined;
@@ -190,7 +197,7 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
       delimiter = undefined;
       continue;
     }
-    const scan = scanDelimitedLine(text, inQuotes, delimiter);
+    const scan = scanDelimitedLine(text, inQuotes, delimiter, alternateQuotes);
     if (first === undefined) {
       if (row === line) caretFirst = candidateFirst ?? row;
       if (scan.hasDelimiter) {
