@@ -285,6 +285,36 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('TSV conversion at the caret retains fully empty records', async () => {
+    await withEditor('\t\t', async (target) => {
+      target.selection = new vscode.Selection(0, 1, 0, 1);
+      await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+      const eol = target.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+      assert.equal(target.document.getText(), ['|     |     |     |', '| --- | --- | --- |'].join(eol));
+    });
+    for (const caretLine of [0, 1, 2, 3]) {
+      await withEditor('A\tB\n\t\nx\ty\n\t', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 0, caretLine, 0);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| A   | B   |', '| --- | --- |', '|     |     |', '| x   | y   |', '|     |     |',
+        ].join('\n'));
+      });
+    }
+  });
+
+  test('CSV conversion includes a leading one-field header identified by the caret', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      await withEditor(['Introduction', 'Header', 'A,B', 'C,D', 'Following paragraph'].join(eol), async (target) => {
+        target.selection = new vscode.Selection(1, 1, 1, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          'Introduction', '| Header |     |', '| ------ | --- |', '| A      | B   |', '| C      | D   |', 'Following paragraph',
+        ].join(eol));
+      });
+    }
+  });
+
   test('inserting prose before a table leaves its formatting unchanged', async () => {
     for (const eol of ['\n', '\r\n']) {
       const original = ['| A | B |', '| --- | --- |', '| longer | x |'].join(eol);

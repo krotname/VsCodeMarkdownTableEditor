@@ -146,11 +146,14 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
   let first: number | undefined;
   let candidateFirst: number | undefined;
+  let caretFirst: number | undefined;
   let last = -1;
   let inQuotes = false;
   let delimiter: string | undefined;
   for (let row = 0; row <= document.lineCount; row += 1) {
-    if (row === document.lineCount || (!inQuotes && document.lineAt(row).text.trim() === '')) {
+    const text = row < document.lineCount ? document.lineAt(row).text : undefined;
+    // Tab-only lines are valid empty TSV records, including the first record.
+    if (text === undefined || (!inQuotes && text.trim() === '' && (delimiter === ',' || !text.includes('\t')))) {
       if (first !== undefined && line >= first && line < row) {
         // The caret explicitly includes pending one-field records; otherwise
         // stop at the last unambiguous CSV/TSV record before adjacent prose.
@@ -159,14 +162,16 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
       }
       first = undefined;
       candidateFirst = undefined;
+      caretFirst = undefined;
       inQuotes = false;
       delimiter = undefined;
       continue;
     }
-    const scan = scanDelimitedLine(document.lineAt(row).text, inQuotes, delimiter);
+    const scan = scanDelimitedLine(text, inQuotes, delimiter);
     if (first === undefined) {
+      if (row === line) caretFirst = row;
       if (scan.hasDelimiter) {
-        first = candidateFirst ?? row;
+        first = Math.min(candidateFirst ?? row, caretFirst ?? row);
         last = row;
         inQuotes = scan.inQuotes;
         delimiter = scan.delimiter;
