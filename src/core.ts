@@ -1860,22 +1860,26 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
 function detectDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
   let commas = 0;
+  let firstDelimitedRecord = true;
+  let quotedTabs = false;
   let inQuotes = false;
   let cellBlank = true;
   for (let index = 0; index < text.length; index += 1) {
     const character = at(text, index);
     if (inQuotes) {
+      if (character === '\t') quotedTabs = true;
       if (character === '"' && at(text, index + 1) === '"') index += 1;
       else if (character === '"') inQuotes = false;
     } else if (character === '"' && cellBlank) inQuotes = true;
-    else if (character === '\t') {
+    else if (character === '\t' && firstDelimitedRecord) {
       tabs += 1;
       cellBlank = true;
     } else if (character === ',') {
       commas += 1;
       cellBlank = true;
     } else if (character === '\r' || character === '\n') {
-      if (tabs > 0 || commas > 0) break;
+      if (firstDelimitedRecord && tabs > 0) return '\t';
+      if (commas > 0) firstDelimitedRecord = false;
       cellBlank = true;
     }
     else if (!isSpace(character)) cellBlank = false;
@@ -1888,15 +1892,21 @@ function detectDelimiter(text: string): ',' | '\t' {
   // punctuation commas in occasional TSV cells need not imply CSV.
   const csv = parseDelimitedRows(text, ',');
   const tsv = parseDelimitedRows(text, '\t');
+  // Continuations of a valid quoted CSV field are not TSV records.
+  if (csv.length > 0 && quotedTabs) return ',';
   let csvRecords = 0;
+  let leadingTabs = 0;
   let tsvRecords = 0;
   for (let row = 1; row < csv.length; row += 1) {
-    if (csv[row]!.length > 1) csvRecords += 1;
+    if (csv[row]!.length > 1) {
+      csvRecords += 1;
+      if (trim(csv[row]![0]!).includes('\t')) leadingTabs += 1;
+    }
   }
   for (let row = 1; row < tsv.length; row += 1) {
     if (tsv[row]!.slice(1).some((cell) => !isBlankText(cell))) tsvRecords += 1;
   }
-  return tsvRecords > csvRecords ? '\t' : ',';
+  return tsvRecords > csvRecords || (tsvRecords > 0 && tsvRecords === csvRecords && leadingTabs === csvRecords) ? '\t' : ',';
 }
 
 function parseDelimited(text: string): string[][] {

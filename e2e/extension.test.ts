@@ -351,6 +351,30 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('caret conversion preserves multiline CSV fields containing tabs', async () => {
+    for (const caretLine of [0, 1, 2, 3]) {
+      await withEditor('A,B\nx,"foo\np\tq\nr\ts"\nFollowing paragraph', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| A   | B           |', '| --- | ----------- |', '| x   | foo p\tq r\ts |', 'Following paragraph',
+        ].join('\n'));
+      });
+    }
+  });
+
+  test('caret conversion preserves TSV when every body value has punctuation commas', async () => {
+    for (const caretLine of [0, 1, 2]) {
+      await withEditor('Title, notes\nA\tone,two\nB\tthree,four\nFollowing paragraph', async (target) => {
+        target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+        await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+        assert.equal(target.document.getText(), [
+          '| Title, notes |            |', '| ------------ | ---------- |', '| A            | one,two    |', '| B            | three,four |', 'Following paragraph',
+        ].join('\n'));
+      });
+    }
+  });
+
   test('ragged CSV conversion keeps trailing tabs as padding', async () => {
     for (const caretLine of [0, 1, 2]) {
       await withEditor('Name,Note\nAnna\t\nBob\t\nFollowing paragraph', async (target) => {
