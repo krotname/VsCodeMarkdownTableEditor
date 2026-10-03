@@ -353,6 +353,21 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('CSV conversion anchors a multiline one-field header to its opening quote', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [1, 2]) {
+        await withEditor(['Introduction', '"First', 'Name"', 'A,B', 'C,D', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            'Introduction', '| First Name |     |', '| ---------- | --- |',
+            '| A          | B   |', '| C          | D   |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
   test('inserting prose before a table leaves its formatting unchanged', async () => {
     for (const eol of ['\n', '\r\n']) {
       const original = ['| A | B |', '| --- | --- |', '| longer | x |'].join(eol);

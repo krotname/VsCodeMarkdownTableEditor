@@ -185,7 +185,7 @@ function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Ran
     }
     const scan = scanDelimitedLine(text, inQuotes, delimiter);
     if (first === undefined) {
-      if (row === line) caretFirst = row;
+      if (row === line) caretFirst = candidateFirst ?? row;
       if (scan.hasDelimiter) {
         first = Math.min(candidateFirst ?? row, caretFirst ?? row);
         last = row;
