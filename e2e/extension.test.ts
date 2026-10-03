@@ -419,6 +419,20 @@ suite('adapter regressions', () => {
     }
   });
 
+  test('literal quotes after a comma in a ragged TSV field do not consume prose', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1]) {
+        await withEditor(['Title, notes', 'A\tpart,"unfinished', '', 'Following paragraph'].join(eol), async (target) => {
+          target.selection = new vscode.Selection(caretLine, 0, caretLine, 0);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Title, notes |                  |', '| ------------ | ---------------- |', '| A            | part,"unfinished |', '', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
   test('ragged CSV conversion keeps trailing tabs as padding', async () => {
     for (const caretLine of [0, 1, 2]) {
       await withEditor('Name,Note\nAnna\t\nBob\t\nFollowing paragraph', async (target) => {

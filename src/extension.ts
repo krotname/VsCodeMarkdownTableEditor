@@ -167,7 +167,11 @@ function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: st
   return { hasDelimiter: tabs + commas > 0 || alternateTabs, hasQuotedField, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
 }
 
-function delimitedBlock(document: vscode.TextDocument, line: number, alternateQuotes = true): vscode.Range {
+function delimitedBlock(
+  document: vscode.TextDocument,
+  line: number,
+  grammar?: { first: number; delimiter: ',' | '\t' },
+): vscode.Range {
   let first: number | undefined;
   let candidateFirst: number | undefined;
   let caretFirst: number | undefined;
@@ -175,6 +179,15 @@ function delimitedBlock(document: vscode.TextDocument, line: number, alternateQu
   let inQuotes = false;
   let delimiter: string | undefined;
   for (let row = 0; row <= document.lineCount; row += 1) {
+    if (row === grammar?.first) {
+      // Keep the inferred block's header even when it has no chosen delimiter.
+      first = row;
+      last = row;
+      candidateFirst = undefined;
+      caretFirst = undefined;
+      inQuotes = false;
+      delimiter = grammar.delimiter;
+    }
     const text = row < document.lineCount ? document.lineAt(row).text : undefined;
     // Tab-only lines are valid empty TSV records, including the first record.
     if (text === undefined || (!inQuotes && text.trim() === '' && (delimiter === ',' || !text.includes('\t')))) {
@@ -183,10 +196,10 @@ function delimitedBlock(document: vscode.TextDocument, line: number, alternateQu
         // stop at the last unambiguous CSV/TSV record before adjacent prose.
         const end = Math.max(last, line);
         const range = new vscode.Range(first, 0, end, document.lineAt(end).text.length);
-        // Tabs establish quote boundaries only when the whole candidate is TSV.
-        // A CSV field can contain a literal tab followed by a literal quote.
-        if (alternateQuotes && detectDelimiter(document.getText(range)) === ',') {
-          return delimitedBlock(document, line, false);
+        // Refine boundaries with the chosen grammar, preserving literal quotes
+        // after tabs in CSV and after punctuation commas in TSV.
+        if (!grammar || first !== grammar.first) {
+          return delimitedBlock(document, line, { first, delimiter: detectDelimiter(document.getText(range)) });
         }
         return range;
       }
@@ -197,7 +210,7 @@ function delimitedBlock(document: vscode.TextDocument, line: number, alternateQu
       delimiter = undefined;
       continue;
     }
-    const scan = scanDelimitedLine(text, inQuotes, delimiter, alternateQuotes);
+    const scan = scanDelimitedLine(text, inQuotes, delimiter, !grammar || first !== grammar.first);
     if (first === undefined) {
       if (row === line) caretFirst = candidateFirst ?? row;
       if (scan.hasDelimiter) {
