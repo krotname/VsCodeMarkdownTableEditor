@@ -1859,6 +1859,7 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
 
 function detectDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
+  let commas = 0;
   let inQuotes = false;
   let cellBlank = true;
   for (let index = 0; index < text.length; index += 1) {
@@ -1870,15 +1871,22 @@ function detectDelimiter(text: string): ',' | '\t' {
     else if (character === '\t') {
       tabs += 1;
       cellBlank = true;
-    } else if (character === ',') cellBlank = true;
-    else if (character === '\r' || character === '\n') cellBlank = true;
+    } else if (character === ',') {
+      commas += 1;
+      cellBlank = true;
+    } else if (character === '\r' || character === '\n') {
+      // Later records may contain literal tabs in CSV fields.
+      if (tabs > 0 || commas > 0) break;
+      cellBlank = true;
+    }
     else if (!isSpace(character)) cellBlank = false;
   }
   return tabs > 0 ? '\t' : ',';
 }
 
 function parseDelimited(text: string): string[][] {
-  const value = trim(text);
+  // Tabs at the edges delimit empty TSV cells and must reach the parser.
+  const value = text;
   if (value.length === 0) return [];
   if (!hasDelimiterOutsideQuotes(value)) return [];
 

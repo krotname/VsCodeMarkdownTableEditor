@@ -7,6 +7,7 @@ import {
   applyWrappedToWidth,
   columnFromCursor,
   findTableRange,
+  findTableRanges,
   fromDelimited,
   newTable,
   type EditResult,
@@ -33,7 +34,7 @@ const commandActions: Record<string, Action> = {
 
 let internalEdit = false;
 let autoTimer: NodeJS.Timeout | undefined;
-let autoRequest: { document: vscode.TextDocument; rows: number[]; power: boolean } | undefined;
+let autoRequest: { document: vscode.TextDocument; rowOffsets: number[]; power: boolean } | undefined;
 
 function documentLines(document: vscode.TextDocument): string[] {
   return Array.from({ length: document.lineCount }, (_, line) => document.lineAt(line).text);
@@ -117,12 +118,58 @@ async function runFit(silent = false): Promise<boolean> {
   return runFitAt(editor, editor.selection.active, silent);
 }
 
+type DelimitedLineScan = { hasDelimiter: boolean; inQuotes: boolean; delimiter: string | undefined };
+
+function scanDelimitedLine(text: string, startsInQuotes: boolean, delimiter?: string): DelimitedLineScan {
+  let inQuotes = startsInQuotes;
+  let cellBlank = !startsInQuotes;
+  let commas = 0;
+  let tabs = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text.charAt(index);
+    if (inQuotes) {
+      if (character === '"' && text[index + 1] === '"') index += 1;
+      else if (character === '"') inQuotes = false;
+    } else if (character === '"' && cellBlank) {
+      inQuotes = true;
+    } else if (character === delimiter || (delimiter === undefined && (character === ',' || character === '\t'))) {
+      if (character === '\t') tabs += 1;
+      else commas += 1;
+      cellBlank = true;
+    } else if (character.trim() !== '') {
+      cellBlank = false;
+    }
+  }
+  return { hasDelimiter: tabs + commas > 0, inQuotes, delimiter: delimiter ?? (tabs > 0 ? '\t' : commas > 0 ? ',' : undefined) };
+}
+
 function delimitedBlock(document: vscode.TextDocument, line: number): vscode.Range {
-  let first = line;
-  let last = line;
-  while (first > 0 && document.lineAt(first - 1).text.trim() !== '') first -= 1;
-  while (last + 1 < document.lineCount && document.lineAt(last + 1).text.trim() !== '') last += 1;
-  return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
+  let first: number | undefined;
+  let inQuotes = false;
+  let delimiter: string | undefined;
+  for (let row = 0; row <= document.lineCount; row += 1) {
+    const scan: DelimitedLineScan = row < document.lineCount
+      ? scanDelimitedLine(document.lineAt(row).text, inQuotes, delimiter)
+      : { hasDelimiter: false, inQuotes: false, delimiter };
+    if (first === undefined) {
+      if (scan.hasDelimiter) {
+        first = row;
+        inQuotes = scan.inQuotes;
+        delimiter = scan.delimiter;
+      }
+      continue;
+    }
+    if (row < document.lineCount && (inQuotes || scan.hasDelimiter)) {
+      inQuotes = scan.inQuotes;
+      continue;
+    }
+    const last = row - 1;
+    if (line >= first && line <= last) return new vscode.Range(first, 0, last, document.lineAt(last).text.length);
+    first = undefined;
+    inQuotes = false;
+    delimiter = undefined;
+  }
+  return new vscode.Range(line, 0, line, 0);
 }
 
 function localizeResultMessage(message: string): string {
@@ -139,14 +186,17 @@ async function convertDelimited(): Promise<void> {
   const editor = activeMarkdownEditor();
   if (!editor) return;
   const sourceRange = editor.selection.isEmpty ? delimitedBlock(editor.document, editor.selection.active.line) : new vscode.Range(editor.selection.start, editor.selection.end);
-  const result = fromDelimited(editor.document.getText(sourceRange));
+  const source = editor.document.getText(sourceRange);
+  const result = fromDelimited(source);
   if (!result.ok) {
     void vscode.window.showErrorMessage(vscode.l10n.t('Markdown Table Editor: {0}', localizeResultMessage(result.message)));
     return;
   }
   internalEdit = true;
   try {
-    await editor.edit((builder) => builder.replace(sourceRange, result.lines.join(editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n')));
+    const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+    const replacement = result.lines.join(eol) + (/[\r\n]$/u.test(source) ? eol : '');
+    await editor.edit((builder) => builder.replace(sourceRange, replacement));
   } finally {
     internalEdit = false;
   }
@@ -190,30 +240,66 @@ async function toggleSetting(name: 'lightAutoAlign' | 'powerAutoFit'): Promise<v
 
 function scheduleAutomaticEdit(event: vscode.TextDocumentChangeEvent): void {
   if (internalEdit || event.document.languageId !== 'markdown' || event.contentChanges.length === 0) return;
+  if (event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo) {
+    if (autoRequest?.document === event.document) {
+      if (autoTimer) clearTimeout(autoTimer);
+      autoTimer = undefined;
+      autoRequest = undefined;
+    }
+    return;
+  }
   const configuration = vscode.workspace.getConfiguration('markdownTableEditor', event.document.uri);
   const power = configuration.get<boolean>('powerAutoFit', false);
   if (!power && !configuration.get<boolean>('lightAutoAlign', true)) return;
   const lines = documentLines(event.document);
   const rows = new Set<number>();
-  for (const change of event.contentChanges) {
-    const line = Math.min(change.range.start.line, lines.length - 1);
-    const range = findTableRange(lines, line);
-    if (range.found) rows.add(range.firstRow);
+  const ranges = findTableRanges(lines);
+  const changes = [...event.contentChanges].sort((left, right) => left.rangeOffset - right.rangeOffset);
+  let offsetDelta = 0;
+  for (const change of changes) {
+    // Change ranges use the old document; positions must use the updated offsets.
+    const startOffset = change.rangeOffset + offsetDelta;
+    const firstRow = event.document.positionAt(startOffset).line;
+    const lastRow = event.document.positionAt(startOffset + change.text.length).line;
+    for (const range of ranges) {
+      if (range.firstRow <= lastRow && range.lastRow >= firstRow) rows.add(range.firstRow);
+    }
+    offsetDelta += change.text.length - change.rangeLength;
   }
-  if (rows.size === 0) return;
-  if (autoTimer) clearTimeout(autoTimer);
   if (autoRequest?.document === event.document) {
-    for (const row of autoRequest.rows) rows.add(row);
+    for (const offset of autoRequest.rowOffsets) {
+      let mappedOffset = offset;
+      let delta = 0;
+      for (const change of changes) {
+        if (offset < change.rangeOffset) break;
+        if (offset <= change.rangeOffset + change.rangeLength) {
+          mappedOffset = change.rangeOffset + delta + change.text.length;
+          break;
+        }
+        delta += change.text.length - change.rangeLength;
+        mappedOffset = offset + delta;
+      }
+      const range = findTableRange(lines, event.document.positionAt(mappedOffset).line);
+      if (range.found) rows.add(range.firstRow);
+    }
   }
-  autoRequest = { document: event.document, rows: [...rows], power };
+  if (autoTimer) clearTimeout(autoTimer);
+  autoTimer = undefined;
+  autoRequest = undefined;
+  if (rows.size === 0) return;
+  autoRequest = {
+    document: event.document,
+    rowOffsets: [...rows].map((row) => event.document.offsetAt(new vscode.Position(row, 0))),
+    power,
+  };
   autoTimer = setTimeout(async () => {
     const request = autoRequest;
     autoRequest = undefined;
     autoTimer = undefined;
     const editor = activeMarkdownEditor();
     if (!request || !editor || editor.document !== request.document) return;
-    for (const row of request.rows.sort((left, right) => right - left)) {
-      const position = new vscode.Position(Math.min(row, editor.document.lineCount - 1), 0);
+    for (const offset of request.rowOffsets.sort((left, right) => right - left)) {
+      const position = editor.document.positionAt(offset);
       if (request.power) await runFitAt(editor, position, true, true);
       else await runActionAt(editor, position, Action.ALIGN, true, true);
     }
