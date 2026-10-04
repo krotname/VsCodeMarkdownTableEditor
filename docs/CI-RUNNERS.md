@@ -31,13 +31,12 @@ collaborator с правом записи — `krotname`.
 | Job | Runner | Условие готовности |
 |---|---|---|
 | Linux CI и packaging | `arc-prod-adler-vscode-mte` | Непривилегированный direct ARC с tokenless `arc-job` и штатными квотами |
-| Windows E2E | `[self-hosted, Windows, X64, adler-white-vscode-mte]` | Проверенный отдельный Windows runner White; затем `CI_WINDOWS_E2E_ENABLED=true` |
+| Windows E2E | `[self-hosted, Windows, X64, adler-white-vscode-mte]` | Обязательный проверенный отдельный Windows runner White |
 | Docker Scorecard | `arc-prod-adler-docker-vscode-mte` | Проверенный отдельный repository-scoped DinD pool; затем `CI_DOCKER_SCORECARD_ENABLED=true` |
 
-Оба opt-in флага по умолчанию отсутствуют: отложенные jobs пропускаются.
-Windows check со статусом skipped не доказывает Windows E2E. VSIX packaging
-требует успешных quality и Linux E2E; skipped Windows допускается только
-пока флаг выключен. После включения флага Windows E2E также обязателен.
+Docker Scorecard включается после приёмки его отдельного пула.
+Windows E2E остаётся обязательным: пока White недоступен, job ожидает runner,
+а VSIX packaging и приёмка PR требуют его успешного результата.
 macOS job раньше отсутствовал; его проверка остаётся отдельной задачей для
 Mac runner, Linux не служит заменой Windows/macOS.
 

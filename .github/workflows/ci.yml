@@ -146,8 +146,7 @@ jobs:
     name: VS Code E2E (windows-latest)
     # Pending a verified Windows runner on White; no hosted fallback or Linux substitution.
     if: >-
-      vars.CI_WINDOWS_E2E_ENABLED == 'true'
-      && github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
       && ((github.event_name == 'pull_request'
            && github.event.pull_request.user.login == github.repository_owner
@@ -174,8 +173,7 @@ jobs:
       !cancelled()
       && needs.quality.result == 'success'
       && needs.e2e.result == 'success'
-      && (needs.e2e-windows.result == 'success'
-          || (vars.CI_WINDOWS_E2E_ENABLED != 'true' && needs.e2e-windows.result == 'skipped'))
+      && needs.e2e-windows.result == 'success'
       && github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
       && ((github.event_name == 'pull_request'
