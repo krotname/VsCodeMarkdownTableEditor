@@ -2,6 +2,9 @@
 
 Participation is covered by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+For CSV/TSV boundaries, automatic formatting, real Extension Host regressions,
+and verification across all three cores, use the [maintenance runbook](docs/RUNBOOK.md).
+
 1. Create a focused branch from `main`.
 2. Run `npm ci` and make the smallest coherent change.
 3. Add or update contract tests. Core behavior changes must also update the canonical fixtures in the JetBrains and Notepad++ repositories.
