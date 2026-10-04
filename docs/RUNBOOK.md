@@ -101,6 +101,13 @@ coverage и скачанные runtimes в Git. Не менять версию �
 checkout. Docs-only diff не требует внешнего ревью; build CI может быть исключён
 path filter. Исключённый run не называть успешным run.
 
+При отсутствии checks проверить `gh api repos/krotname/VsCodeMarkdownTableEditor/actions/workflows`.
+На 04.10.2026 workflows имеют `disabled_manually` во время
+[миграции CI #41](https://github.com/krotname/VsCodeMarkdownTableEditor/pull/41).
+Не менять required gates и не включать остановленный CI в документационной задаче;
+сохранить PR до возобновления и успешных обязательных checks. Это временный snapshot,
+перед продолжением проверить фактическое состояние workflows и runners.
+
 Build/VSIX artifact и merge bugfix не означают новую публикацию в Marketplace.
 Для релиза следовать [CONTRIBUTING](../CONTRIBUTING.md#releasing) и
 [MARKETPLACE_SUBMISSION](../MARKETPLACE_SUBMISSION.md), сверить опубликованную
