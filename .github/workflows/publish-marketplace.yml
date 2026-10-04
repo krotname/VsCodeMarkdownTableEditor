@@ -28,11 +28,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Runs for both modes and never sees the Marketplace token: workflow_dispatch takes the workflow
-  # file and the build scripts from the dispatched ref, so anything reachable here is untrusted.
+  # Both modes are restricted to owner dispatches from main before a home runner is assigned.
+  # This job never sees the Marketplace token.
   verify:
     name: Verify ${{ inputs.version }}
-    runs-on: ubuntu-latest
+    if: >-
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main'
+    runs-on: arc-prod-adler-vscode-mte
     timeout-minutes: 30
     env:
       RELEASE_VERSION: ${{ inputs.version }}
@@ -96,8 +101,13 @@ jobs:
   publish:
     name: Publish ${{ inputs.version }}
     needs: verify
-    if: ${{ inputs.mode == 'publish' }}
-    runs-on: ubuntu-latest
+    if: >-
+      inputs.mode == 'publish'
+      && github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main'
+    runs-on: arc-prod-adler-vscode-mte
     timeout-minutes: 30
     environment: marketplace
     env:

@@ -2,22 +2,44 @@ name: Actionlint
 
 on:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/**'
+      - '.github/actionlint.yaml'
   pull_request:
     paths:
       - '.github/workflows/**'
+      - '.github/actionlint.yaml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: actionlint-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   actionlint:
     name: Lint workflows
-    runs-on: ubuntu-latest
+    if: >-
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && ((github.event_name == 'pull_request'
+           && github.event.pull_request.user.login == github.repository_owner
+           && github.event.pull_request.head.repo.full_name == github.repository)
+          || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
+    runs-on: arc-prod-adler-vscode-mte
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Prepare Python linter without hosted pipx
+        run: |
+          python3 -m venv "$RUNNER_TEMP/actionlint-python"
+          "$RUNNER_TEMP/actionlint-python/bin/python" -m pip install --disable-pip-version-check pyflakes==3.4.0
+          echo "$RUNNER_TEMP/actionlint-python/bin" >> "$GITHUB_PATH"
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+        with:
+          version: '1.7.12'
