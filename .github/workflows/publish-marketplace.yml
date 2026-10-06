@@ -35,6 +35,7 @@ jobs:
     if: >-
       github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && github.event_name == 'workflow_dispatch'
       && github.ref == 'refs/heads/main'
     runs-on: arc-prod-adler-vscode-mte
@@ -105,6 +106,7 @@ jobs:
       inputs.mode == 'publish'
       && github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && github.event_name == 'workflow_dispatch'
       && github.ref == 'refs/heads/main'
     runs-on: arc-prod-adler-vscode-mte

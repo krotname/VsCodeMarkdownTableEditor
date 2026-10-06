@@ -9,7 +9,7 @@ ARC scale set `arc-prod-adler-vscode-mte` для
 
 ## Граница доверия
 
-- PR выполняется только при совпадении автора и запускающего с владельцем
+- PR выполняется только при совпадении автора, actor и triggering actor с владельцем
   `krotname`, а `head.repo.full_name` — с текущим репозиторием. Fork, Dependabot
   и PR других авторов пропускаются до checkout и исполнения кода.
 - Push и ручной CI допускаются только от владельца с `main`. Плановые CodeQL

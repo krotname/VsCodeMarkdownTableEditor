@@ -72,6 +72,7 @@ jobs:
     if: >-
       github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && ((github.event_name == 'pull_request'
            && github.event.pull_request.user.login == github.repository_owner
            && github.event.pull_request.head.repo.full_name == github.repository)
@@ -103,6 +104,7 @@ jobs:
     if: >-
       github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && ((github.event_name == 'pull_request'
            && github.event.pull_request.user.login == github.repository_owner
            && github.event.pull_request.head.repo.full_name == github.repository)
@@ -148,6 +150,7 @@ jobs:
     if: >-
       github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && ((github.event_name == 'pull_request'
            && github.event.pull_request.user.login == github.repository_owner
            && github.event.pull_request.head.repo.full_name == github.repository)
@@ -176,6 +179,7 @@ jobs:
       && needs.e2e-windows.result == 'success'
       && github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
       && ((github.event_name == 'pull_request'
            && github.event.pull_request.user.login == github.repository_owner
            && github.event.pull_request.head.repo.full_name == github.repository)

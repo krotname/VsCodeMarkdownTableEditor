@@ -18,6 +18,7 @@ jobs:
       vars.CI_DOCKER_SCORECARD_ENABLED == 'true'
       && github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.ref == 'refs/heads/main'
+      && github.triggering_actor == github.repository_owner
       && (github.event_name == 'schedule' || github.actor == github.repository_owner)
     runs-on: arc-prod-adler-docker-vscode-mte
     timeout-minutes: 15
