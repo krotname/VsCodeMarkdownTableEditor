@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - arc-prod-adler-vscode-mte
+    - arc-prod-adler-docker-vscode-mte
+    - adler-white-vscode-mte
+    - adler-black-ephemeral

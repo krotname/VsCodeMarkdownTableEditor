@@ -68,7 +68,17 @@ concurrency:
 jobs:
   quality:
     name: Unit, contract, coverage, build
-    runs-on: ubuntu-latest
+    # Public PRs must not execute untrusted code on home runners.
+    if: >-
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
+      && ((github.event_name == 'pull_request'
+           && github.event.pull_request.user.login == github.repository_owner
+           && github.event.pull_request.head.repo.full_name == github.repository)
+          || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
+    runs-on: arc-prod-adler-vscode-mte
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -94,12 +104,18 @@ jobs:
 
           retention-days: 7
   e2e:
-    name: VS Code E2E (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+    # Keep the required-check name; the actual Linux runner is the ARC pool below.
+    name: VS Code E2E (ubuntu-latest)
+    if: >-
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
+      && ((github.event_name == 'pull_request'
+           && github.event.pull_request.user.login == github.repository_owner
+           && github.event.pull_request.head.repo.full_name == github.repository)
+          || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
+    runs-on: arc-prod-adler-vscode-mte
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -115,16 +131,71 @@ jobs:
           package-manager-cache: ${{ !startsWith(runner.name, 'arc-prod-adler-') }}
       - run: npm ci
       - name: Run Extension Host E2E (Linux)
-        if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:e2e
+        run: |
+          set -euo pipefail
+          if command -v xauth >/dev/null 2>&1; then
+            xvfb-run -a npm run test:e2e
+          else
+            # The direct image has Xvfb but no xauth. Use a pod-local, UNIX-only display.
+            display_file=$(mktemp)
+            Xvfb -displayfd 3 -screen 0 1280x1024x24 -nolisten tcp -ac 3>"$display_file" &
+            xvfb_pid=$!
+            trap 'kill "$xvfb_pid" 2>/dev/null || true; rm -f "$display_file"' EXIT
+            attempt=0
+            until [ -s "$display_file" ] || [ "$attempt" -eq 30 ]; do
+              kill -0 "$xvfb_pid" || exit 1
+              sleep 1
+              attempt=$((attempt + 1))
+            done
+            if [ ! -s "$display_file" ]; then
+              echo "Xvfb did not become ready" >&2
+              exit 1
+            fi
+            DISPLAY=":$(cat "$display_file")" npm run test:e2e
+          fi
+
+  e2e-windows:
+    name: VS Code E2E (windows-latest)
+    # White coordinates a disposable Windows guest on Black in an interactive session.
+    if: >-
+      github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
+      && ((github.event_name == 'pull_request'
+           && github.event.pull_request.user.login == github.repository_owner
+           && github.event.pull_request.head.repo.full_name == github.repository)
+          || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
+    runs-on: [self-hosted, Windows, X64, adler-white-vscode-mte, adler-black-ephemeral]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Run Extension Host E2E (Windows)
-        if: runner.os == 'Windows'
         run: npm run test:e2e
 
   package:
     name: Package VSIX
-    needs: [quality, e2e]
-    runs-on: ubuntu-latest
+    needs: [quality, e2e, e2e-windows]
+    if: >-
+      !cancelled()
+      && needs.quality.result == 'success'
+      && needs.e2e.result == 'success'
+      && needs.e2e-windows.result == 'success'
+      && github.repository == 'krotname/VsCodeMarkdownTableEditor'
+      && github.actor == github.repository_owner
+      && github.triggering_actor == github.repository_owner
+      && ((github.event_name == 'pull_request'
+           && github.event.pull_request.user.login == github.repository_owner
+           && github.event.pull_request.head.repo.full_name == github.repository)
+          || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
+    runs-on: arc-prod-adler-vscode-mte
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
