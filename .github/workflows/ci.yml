@@ -144,7 +144,7 @@ jobs:
 
   e2e-windows:
     name: VS Code E2E (windows-latest)
-    # Pending a verified Windows runner on White; no hosted fallback or Linux substitution.
+    # White coordinates a disposable Windows guest on Black in an interactive session.
     if: >-
       github.repository == 'krotname/VsCodeMarkdownTableEditor'
       && github.actor == github.repository_owner
@@ -152,7 +152,7 @@ jobs:
            && github.event.pull_request.user.login == github.repository_owner
            && github.event.pull_request.head.repo.full_name == github.repository)
           || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request'))
-    runs-on: [self-hosted, Windows, X64, adler-white-vscode-mte]
+    runs-on: [self-hosted, Windows, X64, adler-white-vscode-mte, adler-black-ephemeral]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
