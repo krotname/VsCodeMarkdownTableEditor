@@ -8,7 +8,8 @@ try {
   await runTests({
     extensionDevelopmentPath: root,
     extensionTestsPath: join(root, 'dist', 'e2e', 'index.js'),
-    launchArgs: [root, '--disable-extensions'],
+    // Container /dev/shm is small; let Chromium use the job's temporary disk.
+    launchArgs: [root, '--disable-extensions', ...(process.platform === 'linux' ? ['--disable-dev-shm-usage'] : [])],
   });
 } catch (error) {
   console.error(error);
