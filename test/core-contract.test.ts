@@ -6,6 +6,7 @@ import {
   applyWrappedToWidth,
   columnFromCursor,
   displayWidth,
+  detectDelimiter,
   findTableRange,
   findTableRanges,
   fromDelimited,
@@ -54,6 +55,10 @@ test('fit operation respects the requested width when physically possible', () =
   assert.equal(result.ok, true);
   assert.ok(result.lines.every((line) => displayWidth(line) <= 28), result.lines.join('\n'));
   assert.ok(result.lines.length > 3);
+});
+
+test('delimiter inference ignores a leading BOM before a quoted tab in CSV', () => {
+  assert.equal(detectDelimiter('\uFEFF"Name\tAlias",City\nBob,Paris'), ',');
 });
 
 test('new table and delimited conversion validate inputs', () => {

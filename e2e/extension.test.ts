@@ -278,6 +278,23 @@ suite('adapter regressions', () => {
     });
   });
 
+  test('BOM CSV caret conversion ignores quoted tabs and replaces the full document block', async () => {
+    for (const eol of ['\n', '\r\n']) {
+      for (const caretLine of [0, 1]) {
+        await withEditor('"Name\tAlias",City' + eol + 'Bob,Paris' + eol + 'Following paragraph', async (target) => {
+          // Opening content consumes a file BOM; insert it as actual editor text.
+          await target.edit((builder) => builder.insert(new vscode.Position(0, 0), '\uFEFF'));
+          assert.equal(target.document.getText(), '\uFEFF"Name\tAlias",City' + eol + 'Bob,Paris' + eol + 'Following paragraph');
+          target.selection = new vscode.Selection(caretLine, 1, caretLine, 1);
+          await vscode.commands.executeCommand('markdownTableEditor.convertDelimited');
+          assert.equal(target.document.getText(), [
+            '| Name\tAlias | City  |', '| ---------- | ----- |', '| Bob        | Paris |', 'Following paragraph',
+          ].join(eol));
+        });
+      }
+    }
+  });
+
   test('CSV conversion at the caret keeps blank lines inside a quoted field', async () => {
     await withEditor('Introduction\nName,Note\nAnna,"line 1\n\nline 2"\nBob,done\nFollowing paragraph', async (target) => {
       target.selection = new vscode.Selection(4, 0, 4, 0);
