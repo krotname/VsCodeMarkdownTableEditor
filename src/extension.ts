@@ -410,6 +410,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdownTableEditor.toggleLightAutoAlign', () => toggleSetting('lightAutoAlign')),
     vscode.commands.registerCommand('markdownTableEditor.togglePowerAutoFit', () => toggleSetting('powerAutoFit')),
     vscode.workspace.onDidChangeTextDocument(scheduleAutomaticEdit),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      for (const document of autoRequests.keys()) {
+        if (event.affectsConfiguration('markdownTableEditor.lightAutoAlign', document.uri)
+          || event.affectsConfiguration('markdownTableEditor.powerAutoFit', document.uri)) {
+          cancelAutomaticEdit(document);
+        }
+      }
+    }),
     vscode.workspace.onDidCloseTextDocument(cancelAutomaticEdit),
     createStatusBar('markdownTableEditor.toggleLightAutoAlign', `$(table) ${vscode.l10n.t('Light')}`, vscode.l10n.t('Toggle Markdown Table Editor light auto align'), 101),
     createStatusBar('markdownTableEditor.togglePowerAutoFit', `$(screen-full) ${vscode.l10n.t('Power')}`, vscode.l10n.t('Toggle Markdown Table Editor power auto fit'), 100),

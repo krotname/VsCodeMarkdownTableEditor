@@ -175,6 +175,34 @@ test('manual alignment preserves CRLF and participates in undo and redo', async 
 suite('adapter regressions', () => {
   const delay = () => new Promise((resolve) => setTimeout(resolve, 600));
 
+  test('disabling automatic formatting cancels its pending edit', async () => {
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 5), ' longer')), true);
+      const edited = target.document.getText();
+      await vscode.workspace.getConfiguration('markdownTableEditor', target.document.uri)
+        .update('lightAutoAlign', false, vscode.ConfigurationTarget.Global);
+      await delay();
+      assert.equal(target.document.getText(), edited);
+      await vscode.commands.executeCommand('markdownTableEditor.align');
+      assert.equal(target.document.lineAt(2).text, '| one longer | x   |');
+    });
+  });
+
+  test('switching off power fit does not apply a pending wrap', async () => {
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      const configuration = vscode.workspace.getConfiguration('markdownTableEditor', target.document.uri);
+      await configuration.update('powerAutoFit', true, vscode.ConfigurationTarget.Global);
+      assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 5), ' longer')), true);
+      const edited = target.document.getText();
+      await configuration.update('powerAutoFit', false, vscode.ConfigurationTarget.Global);
+      await delay();
+      assert.equal(target.document.getText(), edited);
+      assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 12), ' again')), true);
+      await delay();
+      assert.equal(target.document.lineAt(2).text, '| one longer again | x   |');
+    });
+  });
+
   async function withEditor(content: string, run: (target: vscode.TextEditor) => Promise<void>): Promise<void> {
     const targetDocument = await vscode.workspace.openTextDocument({ language: 'markdown', content });
     const target = await vscode.window.showTextDocument(targetDocument);
