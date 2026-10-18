@@ -175,6 +175,65 @@ test('manual alignment preserves CRLF and participates in undo and redo', async 
 suite('adapter regressions', () => {
   const delay = () => new Promise((resolve) => setTimeout(resolve, 600));
 
+  async function changeSettingWithPendingEdit(target: vscode.TextEditor, setting: 'lightAutoAlign' | 'powerAutoFit'): Promise<void> {
+    const schedule = globalThis.setTimeout;
+    const extension = vscode.extensions.getExtension('krotname.markdown-table-editor-plus');
+    assert.ok(extension);
+    const normalize = (path: string) => process.platform === 'win32' ? path.replaceAll('\\', '/').toLowerCase() : path;
+    const entry = `${normalize(extension.extensionPath)}/dist/extension.js`;
+    let timer: NodeJS.Timeout | undefined;
+    let release: (() => unknown) | undefined;
+    let settingChanged = false;
+    const subscription = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration(`markdownTableEditor.${setting}`, target.document.uri)) settingChanged = true;
+    });
+    // Hold only this extension's debounce; VS Code's settings RPC keeps real timers.
+    globalThis.setTimeout = ((callback: (...args: unknown[]) => unknown, milliseconds?: number, ...args: unknown[]) => {
+      if (milliseconds === 250 && normalize(new Error().stack ?? '').includes(entry)) {
+        assert.equal(timer, undefined, 'expected one pending automatic edit');
+        timer = schedule(() => {}, 60_000);
+        release = () => callback(...args);
+        return timer;
+      }
+      return schedule(callback, milliseconds, ...args);
+    }) as typeof setTimeout;
+    try {
+      assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 5), ' longer')), true);
+      assert.ok(release, 'the automatic edit must be queued before changing the setting');
+      globalThis.setTimeout = schedule;
+      const edited = target.document.getText();
+      await vscode.workspace.getConfiguration('markdownTableEditor', target.document.uri)
+        .update(setting, false, vscode.ConfigurationTarget.Global);
+      await waitUntil(() => settingChanged);
+      // Also exercise the stale callback guard after its timer was cancelled.
+      await release();
+      assert.equal(target.document.getText(), edited);
+    } finally {
+      globalThis.setTimeout = schedule;
+      if (timer) clearTimeout(timer);
+      subscription.dispose();
+    }
+  }
+
+  test('disabling automatic formatting cancels its pending edit', async () => {
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      await changeSettingWithPendingEdit(target, 'lightAutoAlign');
+      await vscode.commands.executeCommand('markdownTableEditor.align');
+      assert.equal(target.document.lineAt(2).text, '| one longer | x   |');
+    });
+  });
+
+  test('switching off power fit does not apply a pending wrap', async () => {
+    await withEditor('| A | B |\n| --- | --- |\n| one | x |', async (target) => {
+      const configuration = vscode.workspace.getConfiguration('markdownTableEditor', target.document.uri);
+      await configuration.update('powerAutoFit', true, vscode.ConfigurationTarget.Global);
+      await changeSettingWithPendingEdit(target, 'powerAutoFit');
+      assert.equal(await target.edit((builder) => builder.insert(new vscode.Position(2, 12), ' again')), true);
+      await waitUntil(() => target.document.lineAt(2).text === '| one longer again | x   |');
+      assert.equal(target.document.lineAt(2).text, '| one longer again | x   |');
+    });
+  });
+
   async function withEditor(content: string, run: (target: vscode.TextEditor) => Promise<void>): Promise<void> {
     const targetDocument = await vscode.workspace.openTextDocument({ language: 'markdown', content });
     const target = await vscode.window.showTextDocument(targetDocument);

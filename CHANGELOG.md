@@ -4,6 +4,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Fixed
+
+- Changing Light Auto Align or Power Auto Fit cancels pending formatting for affected documents,
+  so an earlier edit cannot reformat a table after the mode is disabled.
+
 ## [0.3.0] - 2026-09-06
 
 ### Fixed
