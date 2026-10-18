@@ -1862,6 +1862,10 @@ function hasDelimiterOutsideQuotes(text: string): boolean {
 
 /** Uses the same delimiter inference as fromDelimited for editor boundaries. */
 export function detectDelimiter(text: string): ',' | '\t' {
+  return inferDelimiter(text.startsWith('\uFEFF') ? text.slice(1) : text);
+}
+
+function inferDelimiter(text: string): ',' | '\t' {
   let tabs = 0;
   let commas = 0;
   let firstDelimitedRecord = true;
@@ -1918,11 +1922,11 @@ export function detectDelimiter(text: string): ',' | '\t' {
 
 function parseDelimited(text: string): string[][] {
   // Tabs at the edges delimit empty TSV cells and must reach the parser.
-  const value = text;
+  const value = text.startsWith('\uFEFF') ? text.slice(1) : text;
   if (value.length === 0) return [];
   if (!hasDelimiterOutsideQuotes(value)) return [];
 
-  return parseDelimitedRows(value, detectDelimiter(value));
+  return parseDelimitedRows(value, inferDelimiter(value));
 }
 
 function parseDelimitedRows(value: string, delimiter: ',' | '\t', recordStarts?: number[]): string[][] {

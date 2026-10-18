@@ -6,6 +6,7 @@ import {
   applyWrappedToWidth,
   columnFromCursor,
   displayWidth,
+  detectDelimiter,
   findTableRange,
   findTableRanges,
   fromDelimited,
@@ -56,10 +57,21 @@ test('fit operation respects the requested width when physically possible', () =
   assert.ok(result.lines.length > 3);
 });
 
+test('delimiter inference ignores a leading BOM before a quoted tab in CSV', () => {
+  assert.equal(detectDelimiter('\uFEFF"Name\tAlias",City\nBob,Paris'), ',');
+});
+
 test('new table and delimited conversion validate inputs', () => {
   assert.equal(newTable(3, 2).lines.length, 4);
   assert.equal(newTable(0, 2).ok, false);
   assert.equal(fromDelimited('no delimiter').ok, false);
+});
+
+test('CSV conversion accepts a UTF-8 BOM before a quoted header', () => {
+  const result = fromDelimited('\uFEFF"Название","Город"\n"Тест","Москва"');
+  assert.equal(result.ok, true);
+  assert.deepEqual(splitCells(result.lines[0]!), ['Название', 'Город']);
+  assert.deepEqual(splitCells(result.lines[2]!), ['Тест', 'Москва']);
 });
 
 test('TSV conversion preserves empty edge columns and explicitly empty final records', () => {
