@@ -62,6 +62,13 @@ test('new table and delimited conversion validate inputs', () => {
   assert.equal(fromDelimited('no delimiter').ok, false);
 });
 
+test('CSV conversion accepts a UTF-8 BOM before a quoted header', () => {
+  const result = fromDelimited('\uFEFF"Название","Город"\n"Тест","Москва"');
+  assert.equal(result.ok, true);
+  assert.deepEqual(splitCells(result.lines[0]!), ['Название', 'Город']);
+  assert.deepEqual(splitCells(result.lines[2]!), ['Тест', 'Москва']);
+});
+
 test('TSV conversion preserves empty edge columns and explicitly empty final records', () => {
   for (const { source, cells } of [
     { source: '\tB\nx\ty', cells: [['', 'B'], ['x', 'y']] },

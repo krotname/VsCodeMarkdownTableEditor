@@ -1918,7 +1918,7 @@ export function detectDelimiter(text: string): ',' | '\t' {
 
 function parseDelimited(text: string): string[][] {
   // Tabs at the edges delimit empty TSV cells and must reach the parser.
-  const value = text;
+  const value = text.startsWith('\uFEFF') ? text.slice(1) : text;
   if (value.length === 0) return [];
   if (!hasDelimiterOutsideQuotes(value)) return [];
 
