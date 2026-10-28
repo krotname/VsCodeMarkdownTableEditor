@@ -60,4 +60,4 @@ jobs:
           name: codeql-sarif
           path: codeql-results
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1

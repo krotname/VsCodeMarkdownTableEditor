@@ -76,7 +76,7 @@ jobs:
           name: coverage
           path: coverage/lcov.info
 
-          retention-days: 7
+          retention-days: 1
   e2e:
     # Keep the required-check name; the actual Linux runner is the ARC pool below.
     name: VS Code E2E (ubuntu-latest)
@@ -194,4 +194,4 @@ jobs:
             build/markdown-table-editor-plus.vsix
             build/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1
