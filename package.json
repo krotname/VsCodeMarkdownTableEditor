@@ -48,7 +48,7 @@
     "test:vsix": "node scripts/verify-vsix.mjs",
     "test": "npm run typecheck && npm run test:unit",
     "check": "npm run test && npm run build",
-    "package": "npm run check && node scripts/package.mjs",
+    "package": "npm run test && node scripts/package.mjs",
     "vscode:prepublish": "npm run build"
   },
   "contributes": {
