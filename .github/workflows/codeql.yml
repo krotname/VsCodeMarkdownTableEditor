@@ -37,7 +37,7 @@ jobs:
         if: startsWith(runner.name, 'arc-prod-adler-')
         shell: bash
         run: /opt/arc-cache/arc-cache check-workflow --file .github/workflows/codeql.yml --job "$GITHUB_JOB"
-      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           languages: javascript-typescript
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -47,7 +47,7 @@ jobs:
           package-manager-cache: ${{ !startsWith(runner.name, 'arc-prod-adler-') }}
       - run: npm ci
       - run: npm run build
-      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           upload: never
           upload-database: false
